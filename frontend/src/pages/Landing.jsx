@@ -54,11 +54,26 @@ function Hero() {
         </motion.p>
 
         <MaskLines
-          className="font-display font-black tracking-tighter leading-[0.88] text-[15vw] md:text-[11vw]"
+          className="font-display font-black tracking-[-0.04em] leading-[0.82] text-[15vw] md:text-[11vw]"
           lines={[
-            <span key="1">TECHIN</span>,
-            <span key="2" className="text-[#E2FF4A]">BY RAJ<span className="text-white">.</span></span>,
+            <span key="1" className="inline-flex items-start">
+              TECHIN
+              <sup className="font-mono font-medium text-[#E2FF4A] text-[2.2vw] md:text-[1.1vw] tracking-normal ml-[0.15em] mt-[0.4em]">
+                ®
+              </sup>
+            </span>,
+            <span key="2">
+              <span className="text-outline italic pr-[0.06em]">BY</span>
+              {" "}
+              <span className="text-[#E2FF4A]">RAJ</span>
+              <span className="text-[#E2FF4A]">.</span>
+            </span>,
           ]}
+        />
+        <motion.div
+          initial={{ scaleX: 0 }} animate={{ scaleX: 1 }}
+          transition={{ delay: 0.9, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          className="origin-left h-[3px] w-[38%] max-w-[420px] bg-[#E2FF4A] mt-4 accent-glow"
         />
 
         <div className="grid md:grid-cols-12 gap-8 mt-10 items-end">
