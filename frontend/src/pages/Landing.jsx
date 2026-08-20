@@ -7,11 +7,12 @@ import {
 import { Reveal, MaskLines } from "@/components/Reveal";
 import { INR } from "@/lib/api";
 import { useBuy } from "@/hooks/useBuy";
+import SignalChart from "@/components/SignalChart";
 
 const HERO_IMG =
   "https://images.unsplash.com/photo-1510519138101-570d1dca3d66?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzl8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjB0cmFkaW5nJTIwc2V0dXAlMjBkZXNrJTIwZGFya3xlbnwwfHx8fDE3ODcyMDU3Mzl8MA&ixlib=rb-4.1.0&q=85";
 const INDICATOR_IMG =
-  "https://images.unsplash.com/photo-1689732888407-310424e3a372?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzV8MHwxfHNlYXJjaHwzfHxhYnN0cmFjdCUyMHRyYWRpbmclMjBjaGFydCUyMGRhdGElMjBkYXJrfGVufDB8fHx8MTc4NzIwNTczOXww&ixlib=rb-4.1.0&q=85";
+  "https://images.unsplash.com/photo-1689732888407-310424e3a372?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzV8MHwxfHNlYXJjaHwzfHxhYnN0cmFjdCUyMHRyYWRpbmclMjBjaGFydCUyMGRhdGElMjBkYXJrfGVufDB8fHx8MTc4NzIwNTczOXww&ixlib=rb-4.1.0&q=85"; // eslint-disable-line no-unused-vars
 const COURSE_IMG =
   "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzV8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMHRyYWRpbmclMjBjaGFydCUyMGRhdGElMjBkYXJrfGVufDB8fHx8MTc4NzIwNTczOXww&ixlib=rb-4.1.0&q=85";
 
@@ -152,13 +153,7 @@ function Indicator() {
 
           <div className="md:col-span-7 md:col-start-6">
             <Reveal className="relative mb-10">
-              <div className="absolute -inset-4 bg-[#E2FF4A]/10 blur-3xl rounded-full" />
-              <div className="relative border border-white/10 overflow-hidden rounded-xl">
-                <img src={INDICATOR_IMG} alt="Indicator preview" className="w-full aspect-[4/3] object-cover" />
-                <div className="absolute top-4 left-4 glass px-3 py-1.5 rounded-full text-xs font-mono uppercase tracking-wider">
-                  <span className="text-[#E2FF4A]">●</span> Live chart
-                </div>
-              </div>
+              <SignalChart />
             </Reveal>
             <div className="grid sm:grid-cols-2 gap-4">
               {features.map((f, i) => (
