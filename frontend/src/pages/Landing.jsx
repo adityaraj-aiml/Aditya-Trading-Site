@@ -16,10 +16,11 @@ const COURSE_IMG =
 
 // Real indicator proof screenshots provided by Raj
 const PROOF = {
-  main: "https://customer-assets-agu9un31.emergentagent.net/job_techin-marketplace/artifacts/4awp7f5c_Screenshot%202026-07-08%20125251.png",
-  dash1: "https://customer-assets-agu9un31.emergentagent.net/job_techin-marketplace/artifacts/p8v52sdd_Screenshot%202026-07-09%20192347.png",
-  dash2: "https://customer-assets-agu9un31.emergentagent.net/job_techin-marketplace/artifacts/uitmt85q_Screenshot%202026-07-09%20192324.png",
-  tps: "https://customer-assets-agu9un31.emergentagent.net/job_techin-marketplace/artifacts/3jsfua85_Screenshot%202026-07-09%20215626.png",
+  main: "https://customer-assets-agu9un31.emergentagent.net/job_techin-marketplace/artifacts/rficnssw_Screenshot%202026-08-05%20160403%20-%20Copy.png",
+  tps5: "https://customer-assets-agu9un31.emergentagent.net/job_techin-marketplace/artifacts/87vf52gf_Screenshot%202026-07-22%20123147%20-%20Copy.png",
+  dash: "https://customer-assets-agu9un31.emergentagent.net/job_techin-marketplace/artifacts/5e8fj0an_Screenshot%202026-07-25%20084519%20-%20Copy.png",
+  crop: "https://customer-assets-agu9un31.emergentagent.net/job_techin-marketplace/artifacts/yv7rgyfo_Screenshot%202026-07-25%20083320%20-%20Copy.png",
+  zone: "https://customer-assets-agu9un31.emergentagent.net/job_techin-marketplace/artifacts/dql2a6en_Screenshot%202026-07-22%20113254%20-%20Copy.png",
 };
 
 const SOCIALS = {
@@ -250,7 +251,7 @@ function Proof() {
         <div className="grid md:grid-cols-12 gap-6 items-stretch mb-6">
           <Reveal className="md:col-span-8">
             <ProofFrame src={PROOF.main} tall
-              caption="BTCUSD — a full run of LONG & SHORT signals with TP1–TP4 all HIT and the stop trailed to break-even (BE)." />
+              caption="XAUUSD (Gold) — a LONG signal riding straight through TP1, TP2, TP3 & TP4 (all HIT), with the stop trailed to break-even (BE)." />
           </Reveal>
           <Reveal delay={0.1} className="md:col-span-4">
             <div className="h-full border border-white/10 rounded-xl bg-[#0A0A0A] p-7 flex flex-col">
@@ -268,18 +269,22 @@ function Proof() {
         </div>
 
         {/* supporting shots */}
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Reveal>
-            <ProofFrame src={PROOF.dash1}
-              caption="Full dashboard: SMC LONG/SHORT entries with live bias, confluence score and 5 targets." />
+            <ProofFrame src={PROOF.tps5}
+              caption="BTCUSD — all five targets (TP1 HIT) mapped from live structure, with break-even protection." />
           </Reveal>
           <Reveal delay={0.08}>
-            <ProofFrame src={PROOF.dash2}
-              caption="Trade management in action — TP1 hit, position trailed, clean exit at break-even." />
+            <ProofFrame src={PROOF.dash}
+              caption="The Aditya Sniper Entry indicator: a SHORT with clear SL, ENTRY and TP1–TP4 auto-plotted." />
           </Reveal>
           <Reveal delay={0.16}>
-            <ProofFrame src={PROOF.tps}
-              caption="Clean SMC entries with TP1 & TP2 hit on the same move." />
+            <ProofFrame src={PROOF.crop}
+              caption="Back-to-back LONG & SHORT calls, each with defined entry, stop and targets." />
+          </Reveal>
+          <Reveal delay={0.24}>
+            <ProofFrame src={PROOF.zone}
+              caption="LONG/SHORT signals with the highlighted demand zone the entry is built on." />
           </Reveal>
         </div>
 
