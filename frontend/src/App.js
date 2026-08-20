@@ -34,7 +34,7 @@ function SmoothScroll() {
 function App() {
   return (
     <div className="App min-h-screen bg-[#050505]">
-      <BrowserRouter>
+      <BrowserRouter basename={process.env.PUBLIC_URL}>
         <AuthProvider>
           <ModalProvider>
             <SmoothScroll />
