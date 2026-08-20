@@ -1,4 +1,5 @@
-import { LineChart, Instagram, Youtube, Send } from "lucide-react";
+import { Instagram, Youtube, Send } from "lucide-react";
+import { LogoMark } from "@/components/Logo";
 
 export default function Footer() {
   return (
@@ -7,9 +8,7 @@ export default function Footer() {
         <div className="grid md:grid-cols-12 gap-12 pb-16">
           <div className="md:col-span-5">
             <div className="flex items-center gap-2.5 mb-5">
-              <span className="grid place-items-center w-9 h-9 rounded-md bg-[#E2FF4A] text-black">
-                <LineChart size={18} strokeWidth={2.5} />
-              </span>
+              <LogoMark size={36} />
               <span className="font-display font-extrabold text-lg tracking-tight">
                 Techin <span className="text-[#E2FF4A]">By Raj</span>
               </span>

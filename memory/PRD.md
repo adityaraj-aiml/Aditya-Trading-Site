@@ -27,20 +27,21 @@ Build a course-selling website for "Techin By Raj". Sell a trading indicator (se
 - Dashboard showing owned + locked products
 
 ## Implemented (2026-08-20)
-- JWT auth (register/login/logout/me), admin seed (raj@techinbyraj.com)
+- JWT auth (register/login/logout/me), admin seed (raj@techinbyraj.com), brute-force lockout (5 fails/15min, keyed by X-Forwarded-For IP+email)
 - Product catalog: indicator_pro ₹5499, course_beginner ₹2999, course_pro ₹7999
 - Stripe checkout + status polling + webhook; fulfillment adds product to user.purchases
-- Award-level dark landing page with framer-motion + Lenis
-- Auth modal with buy-gating (buy → signup → auto-continue to checkout)
-- Dashboard library (owned/locked), payment success/cancel pages
-- Verified: backend curl (auth, products, checkout returns Stripe URL) + testing agent frontend e2e 100%
+- Award-level dark landing page with framer-motion + Lenis; distinctive outlined/fill hero wordmark; custom candlestick logo mark
+- Real TradingView candlestick chart in Indicator section (with load fallback)
+- File & media storage (Emergent object storage): admin uploads product files per product; buyers download owned assets from dashboard; gated /api/assets/{id}/download (owner/admin only)
+- Auth modal with buy-gating; Dashboard library (owned assets + locked) + admin upload panel; payment success/cancel pages
+- Verified: backend curl (auth, products, checkout, storage upload/download/403, lockout) + testing agent frontend e2e 100% (2 iterations)
 
 ## Backlog / Remaining
-- P1: Real indicator download delivery + course video hosting (currently access buttons are placeholders)
+- P1: Claude AI trading assistant (playbook fetched; awaiting user's use-case + model choice — Emergent key ready)
 - P1: Password reset (forgot-password) flow
-- P2: Admin panel to manage products/prices
-- P2: Order history / receipts, email confirmations (Resend)
-- P2: Testimonials, blog, referral
+- P1: Course video player UI (files can be uploaded/downloaded; no in-app player yet)
+- P2: Email confirmations (Resend), order history/receipts
+- P2: Admin panel for editing products/prices; testimonials/blog
 
 ## Next Tasks
 - Wire actual downloadable indicator file + course lessons player

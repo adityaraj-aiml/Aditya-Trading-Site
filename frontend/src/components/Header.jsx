@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { LineChart, LogOut, LayoutDashboard } from "lucide-react";
+import { LogOut, LayoutDashboard } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useModal } from "@/context/ModalContext";
+import { LogoMark, LogoWordmark } from "@/components/Logo";
 
 const NAV = [
   { label: "Indicator", id: "indicator" },
@@ -47,15 +48,8 @@ export default function Header() {
     >
       <div className="max-w-[1400px] mx-auto px-6 md:px-10 h-[72px] flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2.5 group" data-testid="brand-logo">
-          <span className="grid place-items-center w-9 h-9 rounded-md bg-[#E2FF4A] text-black">
-            <LineChart size={18} strokeWidth={2.5} />
-          </span>
-          <span className="font-display font-extrabold text-lg tracking-tight leading-none">
-            Techin<span className="text-[#E2FF4A]">.</span>
-            <span className="block text-[9px] font-mono tracking-[0.3em] text-zinc-500 uppercase">
-              by Raj
-            </span>
-          </span>
+          <LogoMark size={36} className="group-hover:scale-105 transition-transform duration-200" />
+          <LogoWordmark />
         </Link>
 
         <nav className="hidden md:flex items-center gap-8">

@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { ArrowUpRight, Check, TrendingUp, Zap, Shield, Layers, Play, Star } from "lucide-react";
+import { ArrowUpRight, Check, TrendingUp, Zap, Shield, Layers, Play, Star, Target } from "lucide-react";
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
@@ -79,8 +79,8 @@ function Hero() {
         <div className="grid md:grid-cols-12 gap-8 mt-10 items-end">
           <Reveal delay={0.5} className="md:col-span-6">
             <p className="text-lg text-zinc-300 leading-relaxed max-w-xl">
-              A hand-crafted trading indicator that reads momentum across timeframes — plus the
-              courses that teach you to trade it. Precision tools, real education, zero fluff.
+              A fully customisable trading indicator built for <span className="text-white font-medium">beginner and pro traders</span> alike —
+              it reads momentum across timeframes, plus the courses that teach you to trade it. Precision tools, real education, zero fluff.
             </p>
           </Reveal>
           <Reveal delay={0.65} className="md:col-span-6 flex flex-wrap gap-4 md:justify-end">
@@ -134,9 +134,10 @@ function Marquee() {
 function Indicator() {
   const { buy, loadingId } = useBuy();
   const features = [
+    { icon: Target, t: "5 dynamic targets", d: "Plots up to 5 profit targets drawn from live support & resistance, adapting to current market structure." },
     { icon: TrendingUp, t: "Multi-timeframe momentum", d: "Reads trend strength across 12+ timeframes and shows you the confluence at a glance." },
-    { icon: Zap, t: "Clean, non-repainting signals", d: "Entry and exit markers that stay put — no repainting, no second-guessing." },
-    { icon: Shield, t: "Built-in risk zones", d: "Auto-plotted invalidation levels so your stop is defined before you enter." },
+    { icon: Zap, t: "Clean, non-repainting signals", d: "High-accuracy entry and exit markers that stay put — no repainting, no second-guessing." },
+    { icon: Shield, t: "Built-in risk zones", d: "Auto-plotted support, resistance & invalidation levels so your stop is defined before you enter." },
     { icon: Layers, t: "Works on any market", d: "Forex, crypto, indices or stocks — the logic adapts to what you trade." },
   ];
   return (
@@ -149,8 +150,9 @@ function Indicator() {
               The Techin<br />Momentum<br /><span className="text-[#E2FF4A]">Indicator.</span>
             </h2>
             <p className="text-zinc-400 leading-relaxed mb-8 max-w-md">
-              My signature tool, refined over years of live trading. It strips the noise and shows
-              only what moves price — so you can act with conviction.
+              My signature tool, refined over years of live trading and fully customisable for both
+              beginners and pros. It delivers <span className="text-white font-medium">high-accuracy signals</span> and keeps you
+              focused on <span className="text-white font-medium">real, tradable moves only</span> — no noise, no guesswork.
             </p>
             <div className="flex items-baseline gap-3 mb-6">
               <span className="font-display font-extrabold text-4xl">{INR(5499)}</span>
@@ -231,13 +233,13 @@ function Courses() {
       id: "course_beginner", tag: "Beginner", price: 2999,
       title: "Beginner Trader Course",
       desc: "Everything a new trader needs — charts, price action basics, risk and the psychology to survive the early days.",
-      points: ["8+ hours of lessons", "Charting fundamentals", "Risk & money management", "Lifetime access"],
+      points: ["8+ hours of lessons", "Charting fundamentals", "How to become a profitable trader", "Lifetime access"],
     },
     {
       id: "course_pro", tag: "Pro", price: 7999, featured: true,
       title: "Pro Trader Masterclass",
-      desc: "Advanced playbooks, live trade breakdowns and the exact way I use the Techin indicator to find high-conviction setups.",
-      points: ["20+ hours advanced content", "Live setup walkthroughs", "Indicator mastery module", "Private community access"],
+      desc: "Advanced playbooks and my personal strategy from 4 years of live trading — the exact way I use the Techin indicator to find high-conviction, profitable setups.",
+      points: ["20+ hours advanced content", "My personal 4-year strategy", "The path to consistent profits", "1-on-1 doubt solving"],
     },
   ];
   return (
@@ -309,9 +311,9 @@ function Courses() {
 function Pricing() {
   const { buy, loadingId } = useBuy();
   const plans = [
-    { id: "course_beginner", name: "Beginner Course", price: 2999, sub: "Start from zero", feats: ["8+ hrs lessons", "Fundamentals", "Lifetime access"] },
-    { id: "indicator_pro", name: "The Indicator", price: 5499, sub: "Most popular", featured: true, feats: ["Signature indicator", "Lifetime updates", "Any market", "Setup guide included"] },
-    { id: "course_pro", name: "Pro Masterclass", price: 7999, sub: "Go full-time", feats: ["20+ hrs advanced", "Live walkthroughs", "Community access"] },
+    { id: "course_beginner", name: "Beginner Course", price: 2999, sub: "Start from zero", feats: ["8+ hrs lessons", "Fundamentals", "Path to profitability", "Lifetime access"] },
+    { id: "indicator_pro", name: "The Indicator", price: 5499, sub: "Most popular", featured: true, feats: ["Signature indicator", "5 dynamic targets", "Support & resistance zones", "Fully customisable", "Lifetime updates"] },
+    { id: "course_pro", name: "Pro Masterclass", price: 7999, sub: "Go full-time", feats: ["20+ hrs advanced", "My 4-year strategy", "1-on-1 doubt solving", "Community access"] },
   ];
   return (
     <section id="pricing" className="relative py-28 md:py-40 px-6 md:px-10 bg-[#0A0A0A] border-y border-white/10">

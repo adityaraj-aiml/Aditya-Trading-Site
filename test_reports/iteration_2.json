@@ -1,0 +1,38 @@
+{
+  "summary": "Frontend-only E2E verification of the 4 new features on Techin By Raj. ALL PASSED: (1) Real TradingView candlestick chart renders inside data-testid='signal-chart' (s.tradingview.com/widgetembed iframe present, window.TradingView loaded, BTCUSDT 1H candles visible in screenshot). (2) Buyer flow — trader@example.com login 200, /dashboard shows owned-indicator_pro with 1 download button; click issued GET /api/assets/{id}/download -> 200, no error toast. (3) Admin flow — raj@techinbyraj.com login 200, admin-panel renders at bottom of /dashboard with all 3 per-product uploaders; uploaded a .txt via admin-title/admin-file/admin-upload-btn-indicator_pro -> POST /api/admin/products/indicator_pro/assets 200, 'File uploaded' toast shown, new file 'TEST_QA_File' appeared in the card list; deleted afterwards via admin-delete (cleanup successful). (4) Landing header shows new SVG logo mark in data-testid='brand-logo'; hero copy contains 'fully customisable' and 'beginner and pro traders'; pricing shows '5 dynamic targets' and '1-on-1 doubt solving'. Admin panel correctly hidden for the non-admin buyer. Also ran the auth playbook spot-checks per instructions.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/auth/login", "issue": "No brute-force lockout. Verified by curl: 6 consecutive wrong-password attempts for raj@techinbyraj.com all returned 401 and a valid login immediately after returned 200. Playbook requires lockout after 5 failed attempts."},
+      {"endpoint": "CORS middleware (server.py:370-371)", "issue": "allow_credentials=True with fallback allow_origins=['*'] when FRONTEND_URL is unset — browsers reject wildcard+credentials. Env is currently set so it works, but the fallback should fail fast instead."},
+      {"endpoint": "seed_admin (server.py:355-356)", "issue": "Hardcoded defaults ADMIN_EMAIL='admin@example.com' / ADMIN_PASSWORD='admin123'. Should read env without insecure defaults. (Update-existing-admin-on-password-change logic itself is correct.)"}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Dashboard admin uploader", "issues": ["Native <input type=file> uses the browser default 'Choose File' control which looks off-brand against the dark #E2FF4A theme (file: pseudo-styles applied but the OS button text is still default).", "Uploaded-file rows and 'No files yet.' use text-zinc-600 on #0A0A0A — very low contrast."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Add brute-force lockout (5 failed attempts) on /api/auth/login per auth playbook.",
+    "Remove insecure fallbacks: CORS allow_origins ['*'] and ADMIN_EMAIL/ADMIN_PASSWORD defaults — fail fast if env missing.",
+    "Optional: increase contrast of admin file-list text (zinc-600 -> zinc-400)."
+  ],
+  "critical_code_review_comments": [
+    "Dashboard.jsx: <AdminPanel products={products} onChange={loadLibrary} /> passes onChange but AdminPanel({ products }) ignores it, and AdminProductUploader never calls it — so after an admin upload/delete the admin's own 'Your library' section is not refreshed. Dead prop / stale UI.",
+    "Dashboard.jsx downloadAsset(): errors are swallowed into a generic 'Download failed' toast with no status-code distinction (403 vs 404 vs 500) and no loading state on the download button.",
+    "AdminProductUploader.upload(): no client-side file size/type validation before POST; a large file will just hang on the disabled button.",
+    "SignalChart.jsx: loads third-party script from s3.tradingview.com with no onerror handler — if the CDN is blocked the chart area silently stays empty with no fallback message."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped per request; auth playbook spot-checks only)", "frontend": "100% (13/13 assertions across 4 features)"},
+  "seed_data_creation": "Uploaded and then deleted a temp asset 'TEST_QA_File' under indicator_pro. No residual test data.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "raj@techinbyraj.com / Techin@2026 (admin) and trader@example.com / Trader@123 (owner) both verified working; cookie set with HttpOnly; Secure; SameSite=None; Partitioned.",
+  "context_for_next_testing_agent": "All 4 new features (TradingView chart, buyer download, admin uploader, brand/hero copy) verified working end-to-end via Playwright on the public URL. Lenis must be destroyed (window.__lenis.destroy()) before using scrollIntoView. Remaining open items are backend hardening only: missing login rate-limit/lockout, wildcard CORS fallback, hardcoded admin creds defaults, and the dead onChange prop on AdminPanel.",
+  "rca_of_the_issue": "No functional defects reproduced. The brute-force gap is a genuine absence of any attempt counter/lockout in the login handler (no failed_attempts/locked_until fields in server.py)."
+}

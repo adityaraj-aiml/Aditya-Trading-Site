@@ -5,12 +5,17 @@ load_dotenv(ROOT_DIR / '.env')
 
 import os
 import logging
+import uuid
+import requests
 import bcrypt
 import jwt
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List
 
-from fastapi import FastAPI, APIRouter, Request, Response, HTTPException, Depends
+from fastapi import (
+    FastAPI, APIRouter, Request, Response, HTTPException, Depends,
+    UploadFile, File, Form,
+)
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, EmailStr, Field
@@ -30,6 +35,49 @@ api_router = APIRouter(prefix="/api")
 
 JWT_ALGORITHM = "HS256"
 STRIPE_API_KEY = os.environ.get("STRIPE_API_KEY", "sk_test_emergent")
+
+# ------------------------------------------------------------------ Object storage
+STORAGE_BASE = (os.environ.get("INTEGRATION_PROXY_URL") or "").strip() or "https://integrations.emergentagent.com"
+STORAGE_URL = STORAGE_BASE.rstrip("/") + "/objstore/api/v1/storage"
+EMERGENT_KEY = os.environ.get("EMERGENT_LLM_KEY")
+APP_NAME = "techinbyraj"
+_storage_key = None
+MIME_TYPES = {
+    "jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "gif": "image/gif",
+    "webp": "image/webp", "pdf": "application/pdf", "zip": "application/zip",
+    "mp4": "video/mp4", "mov": "video/quicktime", "csv": "text/csv", "txt": "text/plain",
+}
+
+def init_storage(force: bool = False):
+    global _storage_key
+    if _storage_key and not force:
+        return _storage_key
+    resp = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_KEY}, timeout=30)
+    resp.raise_for_status()
+    _storage_key = resp.json()["storage_key"]
+    return _storage_key
+
+def put_object(path: str, data: bytes, content_type: str) -> dict:
+    key = init_storage()
+    resp = requests.put(f"{STORAGE_URL}/objects/{path}",
+                        headers={"X-Storage-Key": key, "Content-Type": content_type},
+                        data=data, timeout=120)
+    if resp.status_code == 404:
+        key = init_storage(force=True)
+        resp = requests.put(f"{STORAGE_URL}/objects/{path}",
+                            headers={"X-Storage-Key": key, "Content-Type": content_type},
+                            data=data, timeout=120)
+    resp.raise_for_status()
+    return resp.json()
+
+def get_object(path: str):
+    key = init_storage()
+    resp = requests.get(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key}, timeout=60)
+    if resp.status_code == 404:
+        key = init_storage(force=True)
+        resp = requests.get(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key}, timeout=60)
+    resp.raise_for_status()
+    return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -134,11 +182,29 @@ async def register(input: RegisterInput, response: Response):
     return public_user(doc)
 
 @api_router.post("/auth/login")
-async def login(input: LoginInput, response: Response):
+async def login(input: LoginInput, request: Request, response: Response):
     email = input.email.lower()
+    fwd = request.headers.get("x-forwarded-for", "")
+    ip = fwd.split(",")[0].strip() if fwd else (request.client.host if request.client else "unknown")
+    identifier = f"{ip}:{email}"
+    now = datetime.now(timezone.utc)
+
+    attempt = await db.login_attempts.find_one({"identifier": identifier})
+    if attempt and attempt.get("locked_until"):
+        locked_until = datetime.fromisoformat(attempt["locked_until"])
+        if locked_until > now:
+            raise HTTPException(status_code=429, detail="Too many failed attempts. Try again in a few minutes.")
+
     user = await db.users.find_one({"email": email})
     if not user or not verify_password(input.password, user["password_hash"]):
+        count = (attempt.get("count", 0) if attempt else 0) + 1
+        update = {"count": count, "updated_at": now.isoformat()}
+        if count >= 5:
+            update["locked_until"] = (now + timedelta(minutes=15)).isoformat()
+        await db.login_attempts.update_one({"identifier": identifier}, {"$set": update}, upsert=True)
         raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    await db.login_attempts.delete_one({"identifier": identifier})
     set_auth_cookie(response, create_access_token(str(user["_id"]), email))
     return public_user(user)
 
@@ -155,6 +221,67 @@ async def me(user: dict = Depends(get_current_user)):
 @api_router.get("/products")
 async def products():
     return list(CATALOG.values())
+
+async def require_admin(user: dict = Depends(get_current_user)) -> dict:
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return user
+
+def asset_public(a: dict) -> dict:
+    return {"id": a["id"], "package_id": a["package_id"], "title": a["title"],
+            "original_filename": a["original_filename"], "content_type": a["content_type"],
+            "size": a["size"], "created_at": a["created_at"]}
+
+@api_router.post("/admin/products/{package_id}/assets")
+async def upload_asset(package_id: str, title: str = Form(...), file: UploadFile = File(...),
+                       admin: dict = Depends(require_admin)):
+    if package_id not in CATALOG:
+        raise HTTPException(status_code=404, detail="Product not found")
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "bin"
+    path = f"{APP_NAME}/assets/{package_id}/{uuid.uuid4()}.{ext}"
+    data = await file.read()
+    content_type = file.content_type or MIME_TYPES.get(ext, "application/octet-stream")
+    result = put_object(path, data, content_type)
+    doc = {"id": str(uuid.uuid4()), "package_id": package_id, "title": title,
+           "storage_path": result["path"], "original_filename": file.filename,
+           "content_type": content_type, "size": result.get("size", len(data)),
+           "is_deleted": False, "created_at": datetime.now(timezone.utc).isoformat()}
+    await db.product_assets.insert_one(doc)
+    return asset_public(doc)
+
+@api_router.get("/admin/products/{package_id}/assets")
+async def list_assets_admin(package_id: str, admin: dict = Depends(require_admin)):
+    docs = await db.product_assets.find({"package_id": package_id, "is_deleted": False}).to_list(1000)
+    return [asset_public(d) for d in docs]
+
+@api_router.delete("/admin/assets/{asset_id}")
+async def delete_asset(asset_id: str, admin: dict = Depends(require_admin)):
+    await db.product_assets.update_one({"id": asset_id}, {"$set": {"is_deleted": True}})
+    return {"status": "ok"}
+
+@api_router.get("/my/library")
+async def my_library(user: dict = Depends(get_current_user)):
+    """Owned products with their downloadable assets."""
+    owned_ids = user.get("purchases", [])
+    result = []
+    for pid in owned_ids:
+        if pid not in CATALOG:
+            continue
+        docs = await db.product_assets.find({"package_id": pid, "is_deleted": False}).to_list(1000)
+        result.append({"product": CATALOG[pid], "assets": [asset_public(d) for d in docs]})
+    return result
+
+@api_router.get("/assets/{asset_id}/download")
+async def download_asset(asset_id: str, user: dict = Depends(get_current_user)):
+    record = await db.product_assets.find_one({"id": asset_id, "is_deleted": False})
+    if not record:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    owns = record["package_id"] in user.get("purchases", [])
+    if not owns and user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="You don't own this product")
+    data, content_type = get_object(record["storage_path"])
+    return Response(content=data, media_type=record.get("content_type", content_type),
+                    headers={"Content-Disposition": f'attachment; filename="{record["original_filename"]}"'})
 
 # ------------------------------------------------------------------ Payments
 @api_router.post("/payments/checkout")
@@ -238,6 +365,12 @@ async def stripe_webhook(request: Request):
 @app.on_event("startup")
 async def startup():
     await db.users.create_index("email", unique=True)
+    await db.login_attempts.create_index("identifier", unique=True)
+    try:
+        init_storage()
+        logger.info("Storage initialized")
+    except Exception as e:
+        logger.error(f"Storage init failed: {e}")
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@example.com")
     admin_pw = os.environ.get("ADMIN_PASSWORD", "admin123")
     existing = await db.users.find_one({"email": admin_email})
