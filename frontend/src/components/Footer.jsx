@@ -1,4 +1,4 @@
-import { Instagram, Youtube, Send } from "lucide-react";
+import { Instagram, Send, Mail } from "lucide-react";
 import { LogoMark } from "@/components/Logo";
 
 export default function Footer() {
@@ -23,6 +23,7 @@ export default function Footer() {
             <p className="label mb-5">Explore</p>
             <ul className="space-y-3 text-sm text-zinc-400">
               <li><a href="#indicator" className="hover:text-white transition-colors">The Indicator</a></li>
+              <li><a href="#results" className="hover:text-white transition-colors">Proof / Results</a></li>
               <li><a href="#courses" className="hover:text-white transition-colors">Courses</a></li>
               <li><a href="#pricing" className="hover:text-white transition-colors">Pricing</a></li>
               <li><a href="#faq" className="hover:text-white transition-colors">FAQ</a></li>
@@ -30,15 +31,23 @@ export default function Footer() {
           </div>
 
           <div className="md:col-span-2">
-            <p className="label mb-5">Follow</p>
+            <p className="label mb-5">Connect</p>
             <div className="flex gap-3">
-              {[Instagram, Youtube, Send].map((Icon, i) => (
-                <a key={i} href="#" className="grid place-items-center w-10 h-10 rounded-full border border-white/10 text-zinc-400 hover:text-black hover:bg-[#E2FF4A] hover:border-[#E2FF4A] transition-colors"
-                  data-testid={`footer-social-${i}`}>
+              {[
+                { Icon: Send, href: "https://t.me/themindfultrader", label: "Telegram" },
+                { Icon: Instagram, href: "https://www.instagram.com/aditya__raj02/", label: "Instagram" },
+                { Icon: Mail, href: "mailto:withadityat@gmail.com", label: "Email" },
+              ].map(({ Icon, href, label }, i) => (
+                <a key={i} href={href} target="_blank" rel="noopener noreferrer" aria-label={label}
+                  className="grid place-items-center w-10 h-10 rounded-full border border-white/10 text-zinc-400 hover:text-black hover:bg-[#E2FF4A] hover:border-[#E2FF4A] transition-colors"
+                  data-testid={`footer-social-${label.toLowerCase()}`}>
                   <Icon size={16} />
                 </a>
               ))}
             </div>
+            <a href="mailto:withadityat@gmail.com" className="block mt-4 text-xs text-zinc-500 hover:text-white transition-colors break-all">
+              withadityat@gmail.com
+            </a>
           </div>
         </div>
 

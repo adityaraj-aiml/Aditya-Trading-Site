@@ -33,6 +33,9 @@ Build a course-selling website for "Techin By Raj". Sell a trading indicator (se
 - Award-level dark landing page with framer-motion + Lenis; distinctive outlined/fill hero wordmark; custom candlestick logo mark
 - Real TradingView candlestick chart in Indicator section (with load fallback)
 - File & media storage (Emergent object storage): admin uploads product files per product; buyers download owned assets from dashboard; gated /api/assets/{id}/download (owner/admin only)
+- Proof / Results section (#results): real indicator screenshots (LONG/SHORT + TP1–TP5 targets) with a "how to read it" legend, object-contain framing (no cropping), click-to-enlarge
+- Social links live: Telegram (t.me/themindfultrader), Instagram (aditya__raj02), Email (withadityat@gmail.com) — in Results section + footer
+- Fixed React StrictMode race that hid the TradingView chart behind its fallback
 - Auth modal with buy-gating; Dashboard library (owned assets + locked) + admin upload panel; payment success/cancel pages
 - Verified: backend curl (auth, products, checkout, storage upload/download/403, lockout) + testing agent frontend e2e 100% (2 iterations)
 

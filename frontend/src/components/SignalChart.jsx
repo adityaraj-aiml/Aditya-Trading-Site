@@ -25,7 +25,8 @@ export default function SignalChart({ symbol = "BINANCE:BTCUSDT" }) {
     let cancelled = false;
     loadTradingView()
       .then(() => {
-        if (cancelled || !window.TradingView) { setFailed(true); return; }
+        if (cancelled) return;
+        if (!window.TradingView) { setFailed(true); return; }
         const el = document.getElementById(containerId.current);
         if (!el) return;
         el.innerHTML = "";
@@ -69,7 +70,7 @@ export default function SignalChart({ symbol = "BINANCE:BTCUSDT" }) {
         {failed ? (
           <div className="w-full h-full grid place-items-center text-center px-6">
             <p className="text-sm text-zinc-500 font-mono">
-              Live chart couldn't load here.<br />It renders fine on the deployed site.
+              Live chart is loading…<br />please check your connection.
             </p>
           </div>
         ) : (

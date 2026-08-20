@@ -1,0 +1,32 @@
+{
+  "summary": "Frontend-only Playwright verification of the new Proof/Results section on the Techin By Raj landing page (public preview URL). ALL requested items PASSED: (1) section id='results' renders heading 'Real trades. / Real targets hit.', the 'How to read it' legend panel beside the featured chart with all 4 entries (LONG / SHORT, TP1 - TP5, BE (Break-Even), Confluence score), 1 large featured screenshot + 3 supporting screenshots, each with a caption (4 captions found). (2) All 4 proof <img> elements load successfully from customer-assets-agu9un31.emergentagent.net (naturalWidth 1274x365, 1913x860, 1919x865, 1456x611; complete=true, none broken). object-contain letterboxes rather than crops, so TP labels on the featured shot are readable. (3) proof-telegram / proof-instagram / proof-email hrefs exact match (https://t.me/themindfultrader, https://www.instagram.com/aditya__raj02/, mailto:withadityat@gmail.com). (4) footer-social-telegram / -instagram / -email hrefs correct and footer displays withadityat@gmail.com. (5) Header nav-results link present, click scrolls to #results (top offset -0.5px). (6) No console errors and no page errors on load; no horizontal overflow at 390x844 mobile; results layout stacks correctly on mobile. REGRESSION FOUND: the Indicator section TradingView chart (data-testid='signal-chart') now shows the fallback text 'Live chart couldn't load here. It renders fine on the deployed site.' on every load (2/2 reloads), even though tv.js and s.tradingview.com/widgetembed return 200 and window.TradingView is defined and an iframe is actually created.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "SignalChart.jsx", "issue": "TradingView widget never displays: fallback 'Live chart couldn't load here. It renders fine on the deployed site.' is rendered on every page load although the widget script loads (200) and an iframe is injected. Reproduced 2/2 loads on desktop 1920x1080.", "selector": "[data-testid='signal-chart']", "priority": "HIGH"},
+      {"component": "SignalChart.jsx fallback copy", "issue": "User-facing fallback text contains internal/dev messaging ('It renders fine on the deployed site.') which should never be shown to end users.", "selector": "[data-testid='signal-chart']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Results section - 3 supporting screenshots", "issues": ["Full 1913x860 dashboard screenshots are rendered into a 449x252 box (aspect-16/9, object-contain), so TP/BE labels and confluence text inside them are unreadable at that scale. They are click-through to the full image (good), but consider a lightbox or a 'click to enlarge' hint so users know the small thumbs are zoomable."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Fix SignalChart TradingView render regression (see rca_of_the_issue): in the effect, do not call setFailed(true) on the cancelled path - change `if (cancelled || !window.TradingView) { setFailed(true); return; }` to `if (cancelled) return; if (!window.TradingView) { setFailed(true); return; }`. React 18 StrictMode double-invokes the effect; the first (cleaned-up) instance's promise resolution flips failed=true and unmounts the container of the widget created by the second instance.",
+    "Reword the chart fallback copy to remove the 'renders fine on the deployed site' developer note.",
+    "Optional: add a visible 'click to enlarge' affordance / lightbox for the 3 small proof screenshots."
+  ],
+  "critical_code_review_comments": [
+    "SignalChart.jsx: cancelled-effect path incorrectly sets error state (StrictMode race) - only guard against unmount, don't mark as failed.",
+    "Landing.jsx is 551 lines with all sections inline; consider splitting sections (Hero/Indicator/Proof/Pricing/Faq) into separate files as it grows past 700 lines.",
+    "PROOF image URLs are hardcoded external customer-asset URLs in the component; fine for static proof but they are unversioned - a 404 on the CDN would silently break the whole Proof section (no onError fallback on ProofFrame img)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (frontend-only request)", "frontend": "Results/Proof feature: 100% (6/6 requested checks passed); regression check: 1 failure (TradingView chart)"},
+  "seed_data_creation": "none",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Results/Proof section fully verified (images load, legend, captions, social hrefs, nav link, footer links, mobile layout). Only open item is the SignalChart TradingView StrictMode race causing the permanent fallback message in the Indicator section. Scrolling: use window.__lenis.scrollTo(y,{immediate:true}) - clicking data-testid='nav-results' also scrolls correctly. Backend was intentionally not tested this iteration; prior backend hardening items from iteration_2 (login lockout, wildcard CORS fallback, admin cred defaults) are still open and unverified.",
+  "rca_of_the_issue": "SignalChart uses a module-level promise for tv.js and a per-effect `cancelled` flag. Under React 18 StrictMode (enabled in src/index.js), the effect mounts, cleans up (cancelled=true), then mounts again. When the shared promise resolves, the first, cancelled instance executes `if (cancelled || !window.TradingView) { setFailed(true); return; }` -> failed=true. React then unmounts the widget container div (rendered only when !failed), so the TradingView iframe created by the second instance is hidden and the fallback text is shown, despite tv.js (200) and widgetembed (200) loading fine. Fix: separate the cancelled guard from the failure guard."
+}

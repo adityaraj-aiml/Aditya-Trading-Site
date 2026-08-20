@@ -8,8 +8,8 @@ import { LogoMark, LogoWordmark } from "@/components/Logo";
 
 const NAV = [
   { label: "Indicator", id: "indicator" },
+  { label: "Results", id: "results" },
   { label: "Courses", id: "courses" },
-  { label: "Method", id: "method" },
   { label: "Pricing", id: "pricing" },
   { label: "FAQ", id: "faq" },
 ];

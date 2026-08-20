@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { ArrowUpRight, Check, TrendingUp, Zap, Shield, Layers, Play, Star, Target } from "lucide-react";
+import { ArrowUpRight, Check, TrendingUp, Zap, Shield, Layers, Play, Star, Target, Send, Instagram, Mail, Maximize2 } from "lucide-react";
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
@@ -11,10 +11,22 @@ import SignalChart from "@/components/SignalChart";
 
 const HERO_IMG =
   "https://images.unsplash.com/photo-1510519138101-570d1dca3d66?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzl8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjB0cmFkaW5nJTIwc2V0dXAlMjBkZXNrJTIwZGFya3xlbnwwfHx8fDE3ODcyMDU3Mzl8MA&ixlib=rb-4.1.0&q=85";
-const INDICATOR_IMG =
-  "https://images.unsplash.com/photo-1689732888407-310424e3a372?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzV8MHwxfHNlYXJjaHwzfHxhYnN0cmFjdCUyMHRyYWRpbmclMjBjaGFydCUyMGRhdGElMjBkYXJrfGVufDB8fHx8MTc4NzIwNTczOXww&ixlib=rb-4.1.0&q=85"; // eslint-disable-line no-unused-vars
 const COURSE_IMG =
   "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzV8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMHRyYWRpbmclMjBjaGFydCUyMGRhdGElMjBkYXJrfGVufDB8fHx8MTc4NzIwNTczOXww&ixlib=rb-4.1.0&q=85";
+
+// Real indicator proof screenshots provided by Raj
+const PROOF = {
+  main: "https://customer-assets-agu9un31.emergentagent.net/job_techin-marketplace/artifacts/4awp7f5c_Screenshot%202026-07-08%20125251.png",
+  dash1: "https://customer-assets-agu9un31.emergentagent.net/job_techin-marketplace/artifacts/p8v52sdd_Screenshot%202026-07-09%20192347.png",
+  dash2: "https://customer-assets-agu9un31.emergentagent.net/job_techin-marketplace/artifacts/uitmt85q_Screenshot%202026-07-09%20192324.png",
+  tps: "https://customer-assets-agu9un31.emergentagent.net/job_techin-marketplace/artifacts/3jsfua85_Screenshot%202026-07-09%20215626.png",
+};
+
+const SOCIALS = {
+  telegram: "https://t.me/themindfultrader",
+  instagram: "https://www.instagram.com/aditya__raj02/",
+  email: "withadityat@gmail.com",
+};
 
 export default function Landing() {
   return (
@@ -22,6 +34,7 @@ export default function Landing() {
       <Hero />
       <Marquee />
       <Indicator />
+      <Proof />
       <Method />
       <Courses />
       <Pricing />
@@ -190,6 +203,113 @@ function Indicator() {
   );
 }
 
+/* ------------------------------------------------------------------ PROOF */
+function ProofFrame({ src, caption, className = "", tall = false }) {
+  return (
+    <a href={src} target="_blank" rel="noopener noreferrer"
+      className={`group relative block border border-white/10 rounded-xl overflow-hidden bg-[#0A0A0A] hover:border-[#E2FF4A]/40 transition-colors h-full flex flex-col ${className}`}>
+      <div className={`relative bg-black grid place-items-center overflow-hidden ${tall ? "aspect-[16/7]" : "aspect-[16/9]"}`}>
+        <img src={src} alt={caption} loading="lazy"
+          className="w-full h-full object-contain group-hover:scale-[1.02] transition-transform duration-500" />
+        <div className="absolute top-3 right-3 grid place-items-center w-8 h-8 rounded-full glass text-white opacity-0 group-hover:opacity-100 transition-opacity">
+          <Maximize2 size={14} />
+        </div>
+      </div>
+      <div className="p-4 border-t border-white/10 flex-1">
+        <p className="text-xs md:text-sm text-zinc-300 leading-snug">{caption}</p>
+      </div>
+    </a>
+  );
+}
+
+function Proof() {
+  const legend = [
+    { tag: "LONG / SHORT", d: "Auto entry signals printed directly on the candles — no guessing where to enter." },
+    { tag: "TP1 – TP5", d: "Up to five take-profit targets drawn from live support & resistance, marked HIT as price reaches them." },
+    { tag: "BE (Break-Even)", d: "Once TP1 hits, your stop trails to entry — the trade becomes risk-free." },
+    { tag: "Confluence score", d: "A live read of how many conditions align, so you only take high-quality setups." },
+  ];
+  return (
+    <section id="results" className="relative py-28 md:py-40 px-6 md:px-10">
+      <div className="max-w-[1400px] mx-auto">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-14">
+          <Reveal>
+            <p className="label mb-5">02 — Proof</p>
+            <h2 className="font-display font-extrabold text-4xl md:text-6xl tracking-tighter leading-[0.95]">
+              Real trades.<br />Real targets hit.
+            </h2>
+          </Reveal>
+          <Reveal delay={0.1}>
+            <p className="text-zinc-400 max-w-sm">
+              Actual screenshots from my own charts — LONG/SHORT entries and TP1–TP5 targets hitting, live on BTCUSD.
+            </p>
+          </Reveal>
+        </div>
+
+        {/* featured chart + side legend */}
+        <div className="grid md:grid-cols-12 gap-6 items-stretch mb-6">
+          <Reveal className="md:col-span-8">
+            <ProofFrame src={PROOF.main} tall
+              caption="BTCUSD — a full run of LONG & SHORT signals with TP1–TP4 all HIT and the stop trailed to break-even (BE)." />
+          </Reveal>
+          <Reveal delay={0.1} className="md:col-span-4">
+            <div className="h-full border border-white/10 rounded-xl bg-[#0A0A0A] p-7 flex flex-col">
+              <p className="label mb-5">How to read it</p>
+              <ul className="space-y-5 flex-1">
+                {legend.map((l) => (
+                  <li key={l.tag}>
+                    <p className="font-display font-bold text-base mb-1 text-[#E2FF4A]">{l.tag}</p>
+                    <p className="text-sm text-zinc-400 leading-relaxed">{l.d}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </Reveal>
+        </div>
+
+        {/* supporting shots */}
+        <div className="grid md:grid-cols-3 gap-6">
+          <Reveal>
+            <ProofFrame src={PROOF.dash1}
+              caption="Full dashboard: SMC LONG/SHORT entries with live bias, confluence score and 5 targets." />
+          </Reveal>
+          <Reveal delay={0.08}>
+            <ProofFrame src={PROOF.dash2}
+              caption="Trade management in action — TP1 hit, position trailed, clean exit at break-even." />
+          </Reveal>
+          <Reveal delay={0.16}>
+            <ProofFrame src={PROOF.tps}
+              caption="Clean SMC entries with TP1 & TP2 hit on the same move." />
+          </Reveal>
+        </div>
+
+        {/* follow / connect */}
+        <Reveal delay={0.1}>
+          <div className="mt-14 flex flex-col sm:flex-row sm:items-center justify-between gap-6 border-t border-white/10 pt-8">
+            <p className="text-zinc-400 text-sm max-w-md">
+              Follow along for live setups & updates, or reach out with any questions before you buy.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <a href={SOCIALS.telegram} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-2 border border-white/15 px-5 py-2.5 rounded-full text-sm hover:border-[#E2FF4A] hover:text-[#E2FF4A] transition-colors" data-testid="proof-telegram">
+                <Send size={15} /> Telegram
+              </a>
+              <a href={SOCIALS.instagram} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-2 border border-white/15 px-5 py-2.5 rounded-full text-sm hover:border-[#E2FF4A] hover:text-[#E2FF4A] transition-colors" data-testid="proof-instagram">
+                <Instagram size={15} /> Instagram
+              </a>
+              <a href={`mailto:${SOCIALS.email}`}
+                className="flex items-center gap-2 border border-white/15 px-5 py-2.5 rounded-full text-sm hover:border-[#E2FF4A] hover:text-[#E2FF4A] transition-colors" data-testid="proof-email">
+                <Mail size={15} /> Email
+              </a>
+            </div>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
 /* ------------------------------------------------------------------ METHOD */
 function Method() {
   const chapters = [
@@ -202,7 +322,7 @@ function Method() {
     <section id="method" className="relative py-28 md:py-40 px-6 md:px-10 bg-[#0A0A0A] border-y border-white/10">
       <div className="max-w-[1400px] mx-auto">
         <Reveal>
-          <p className="label mb-5">02 — The Method</p>
+          <p className="label mb-5">03 — The Method</p>
           <h2 className="font-display font-extrabold text-4xl md:text-6xl tracking-tighter leading-[0.95] max-w-3xl mb-16">
             A process, not a<br />promise.
           </h2>
@@ -247,7 +367,7 @@ function Courses() {
       <div className="max-w-[1400px] mx-auto">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
           <Reveal>
-            <p className="label mb-5">03 — Education</p>
+            <p className="label mb-5">04 — Education</p>
             <h2 className="font-display font-extrabold text-4xl md:text-6xl tracking-tighter leading-[0.95]">
               Video courses for<br />every level.
             </h2>
@@ -319,7 +439,7 @@ function Pricing() {
     <section id="pricing" className="relative py-28 md:py-40 px-6 md:px-10 bg-[#0A0A0A] border-y border-white/10">
       <div className="max-w-[1400px] mx-auto">
         <Reveal className="mb-16">
-          <p className="label mb-5">04 — Pricing</p>
+          <p className="label mb-5">05 — Pricing</p>
           <h2 className="font-display font-extrabold text-4xl md:text-6xl tracking-tighter leading-[0.95] max-w-2xl">
             Own it once.<br />Trade it forever.
           </h2>
@@ -379,7 +499,7 @@ function Faq() {
     <section id="faq" className="relative py-28 md:py-40 px-6 md:px-10">
       <div className="max-w-[1000px] mx-auto grid md:grid-cols-12 gap-10">
         <Reveal className="md:col-span-4">
-          <p className="label mb-5">05 — FAQ</p>
+          <p className="label mb-5">06 — FAQ</p>
           <h2 className="font-display font-extrabold text-4xl md:text-5xl tracking-tighter leading-[0.95]">
             Questions,<br />answered.
           </h2>
