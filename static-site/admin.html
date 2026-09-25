@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Admin — Techin By Raj</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="css/style.css" />
+<link rel="stylesheet" href="css/admin.css" />
+</head>
+<body class="admin-body">
+
+<!-- ---------- Login ---------- -->
+<div class="login-shell" id="loginScreen">
+  <div class="login-card">
+    <span class="brand-mark" aria-hidden="true" style="margin-bottom:6px">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <line x1="5" y1="1" x2="5" y2="17" stroke="var(--accent)" stroke-width="1.4"/>
+        <rect x="2.5" y="6" width="5" height="6" rx="1" fill="var(--accent)"/>
+        <line x1="13" y1="3" x2="13" y2="15" stroke="var(--ink-faint)" stroke-width="1.4"/>
+        <rect x="10.5" y="7" width="5" height="4" rx="1" fill="var(--ink-faint)"/>
+      </svg>
+    </span>
+    <h1>Techin By Raj — Admin</h1>
+    <p class="sub">Sign in to manage course videos, indicators, and the live chart symbol.</p>
+    <form id="loginForm" style="margin-top:18px">
+      <div class="field">
+        <label for="loginPassword">Admin password</label>
+        <input id="loginPassword" type="password" autocomplete="current-password" required autofocus />
+      </div>
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px">Sign In</button>
+      <p class="login-error" id="loginError"></p>
+    </form>
+    <p class="admin-help" style="margin-top:16px">Local, browser-only login — see README for the default password and how to change it. Not a substitute for real server-side auth.</p>
+  </div>
+</div>
+
+<!-- ---------- Admin app ---------- -->
+<div id="adminApp" hidden>
+
+  <div class="admin-topbar">
+    <a href="index.html" class="brand" target="_blank" rel="noopener">
+      <span class="brand-mark" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <line x1="5" y1="1" x2="5" y2="17" stroke="var(--accent)" stroke-width="1.4"/>
+          <rect x="2.5" y="6" width="5" height="6" rx="1" fill="var(--accent)"/>
+          <line x1="13" y1="3" x2="13" y2="15" stroke="var(--ink-faint)" stroke-width="1.4"/>
+          <rect x="10.5" y="7" width="5" height="4" rx="1" fill="var(--ink-faint)"/>
+        </svg>
+      </span>
+      <span>Techin<small>Admin</small></span>
+    </a>
+    <div class="admin-topbar-actions">
+      <a href="index.html" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">View Live Site ↗</a>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle light and dark theme">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8L6 18M18 6l1.8-1.8"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+      </button>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn">Log Out</button>
+    </div>
+  </div>
+
+  <main class="admin-main">
+    <div class="admin-tabs" role="tablist">
+      <button class="admin-tab-btn active" data-tab="courses">Courses &amp; Videos</button>
+      <button class="admin-tab-btn" data-tab="indicators">Indicators</button>
+      <button class="admin-tab-btn" data-tab="chart">Live Chart</button>
+      <button class="admin-tab-btn" data-tab="backup">Backup &amp; Security</button>
+    </div>
+
+    <!-- ===== Courses & Videos ===== -->
+    <section class="admin-panel active" id="panel-courses">
+      <div class="admin-section-title">Courses &amp; Videos</div>
+      <p class="admin-section-sub">Add lesson videos to each course. Titles and durations show directly on the public site.</p>
+
+      <div id="coursesAdminList"></div>
+
+      <div class="admin-card">
+        <div class="admin-card-head"><h3>Add a New Course</h3></div>
+        <form class="admin-form" id="addCourseForm">
+          <div class="field">
+            <label for="ncTitle">Course title</label>
+            <input id="ncTitle" required placeholder="e.g. Scalping Intraday Setups" />
+          </div>
+          <div class="field">
+            <label for="ncBadge">Level badge</label>
+            <input id="ncBadge" required placeholder="Beginner / Intermediate / Advanced" />
+          </div>
+          <div class="field">
+            <label for="ncPace">Duration / pace</label>
+            <input id="ncPace" required placeholder="e.g. 4 weeks · self-paced" />
+          </div>
+          <div class="field field-wide">
+            <label for="ncDesc">Short description</label>
+            <textarea id="ncDesc" required placeholder="One or two lines describing who this course is for"></textarea>
+          </div>
+          <div class="field field-wide">
+            <button type="submit" class="btn btn-primary">Add Course</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ===== Indicators ===== -->
+    <section class="admin-panel" id="panel-indicators">
+      <div class="admin-section-title">Custom Indicators</div>
+      <p class="admin-section-sub">Manage the indicator cards shown on the public site.</p>
+
+      <div id="indicatorsAdminList"></div>
+
+      <div class="admin-card">
+        <div class="admin-card-head"><h3>Add an Indicator</h3></div>
+        <form class="admin-form stack" id="addIndicatorForm">
+          <div class="field">
+            <label for="niTitle">Indicator name</label>
+            <input id="niTitle" required placeholder="e.g. Volatility Squeeze Alert" />
+          </div>
+          <div class="field">
+            <label for="niDesc">Description</label>
+            <textarea id="niDesc" required placeholder="What it does and why it's useful"></textarea>
+          </div>
+          <div class="field">
+            <label for="niTags">Feature tags (comma-separated)</label>
+            <input id="niTags" placeholder="e.g. Auto-alerts, Non-repainting, Any timeframe" />
+          </div>
+          <div class="field">
+            <label for="niPlatform">Platform</label>
+            <input id="niPlatform" value="TradingView" />
+          </div>
+          <div class="field">
+            <button type="submit" class="btn btn-primary">Add Indicator</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ===== Live Chart ===== -->
+    <section class="admin-panel" id="panel-chart">
+      <div class="admin-section-title">Live Chart</div>
+      <p class="admin-section-sub">Sets the default TradingView symbol shown in the homepage hero. Visitors can still change it themselves on the chart.</p>
+
+      <div class="admin-card">
+        <form class="admin-form" id="chartForm">
+          <div class="field field-wide">
+            <label for="tvSymbolInput">TradingView symbol</label>
+            <input id="tvSymbolInput" placeholder="e.g. NSE:NIFTY, BINANCE:BTCUSDT, NASDAQ:AAPL" />
+            <p class="admin-help">Format is <code>EXCHANGE:TICKER</code>. Look up exact symbols at tradingview.com if unsure.</p>
+          </div>
+          <div class="field field-wide">
+            <button type="submit" class="btn btn-primary">Save Chart Symbol</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ===== Backup & Security ===== -->
+    <section class="admin-panel" id="panel-backup">
+      <div class="admin-section-title">Backup &amp; Security</div>
+      <p class="admin-section-sub">Your content lives in this browser's local storage. Export a backup regularly, and before clearing browser data.</p>
+
+      <div class="admin-card">
+        <div class="admin-card-head"><h3>Export / Import</h3></div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px">
+          <button class="btn btn-ghost btn-sm" id="exportBtn">Download JSON Backup</button>
+          <label class="btn btn-ghost btn-sm" style="cursor:pointer">
+            Import JSON Backup
+            <input type="file" id="importFile" accept="application/json" hidden />
+          </label>
+        </div>
+        <p class="admin-help">Import replaces all courses, indicators, and the chart symbol with what's in the file.</p>
+      </div>
+
+      <div class="admin-card">
+        <div class="admin-card-head"><h3>Change Admin Password</h3></div>
+        <form class="admin-form" id="passwordForm">
+          <div class="field">
+            <label for="newPassword">New password</label>
+            <input id="newPassword" type="password" required minlength="6" />
+          </div>
+          <div class="field">
+            <button type="submit" class="btn btn-ghost">Update Password</button>
+          </div>
+        </form>
+        <p class="admin-help">Stored only in this browser. Anyone with browser access and this password can edit the site — this is not real server-side security.</p>
+      </div>
+
+      <div class="admin-card danger-zone">
+        <div class="admin-card-head"><h3>Reset All Content</h3></div>
+        <p class="admin-section-sub" style="margin-bottom:12px">Deletes all courses, videos, and indicators in this browser and restores the original defaults. Cannot be undone — export a backup first.</p>
+        <button class="btn btn-ghost btn-sm" id="resetBtn" style="border-color:var(--danger);color:var(--danger)">Reset to Defaults</button>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>

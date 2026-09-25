@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Techin By Raj — Price Action Trading Courses &amp; Indicators</title>
+<meta name="description" content="Learn practical price-action trading and get custom TradingView indicators from Techin By Raj. Courses, indicators, and mentorship for retail traders." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap nav">
+    <a href="#top" class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <line x1="5" y1="1" x2="5" y2="17" stroke="var(--accent)" stroke-width="1.4"/>
+          <rect x="2.5" y="6" width="5" height="6" rx="1" fill="var(--accent)"/>
+          <line x1="13" y1="3" x2="13" y2="15" stroke="var(--ink-faint)" stroke-width="1.4"/>
+          <rect x="10.5" y="7" width="5" height="4" rx="1" fill="var(--ink-faint)"/>
+        </svg>
+      </span>
+      <span>Techin<small>By Raj</small></span>
+    </a>
+
+    <nav class="nav-links" id="navLinks" data-open="false">
+      <a href="#courses">Courses</a>
+      <a href="#indicators">Indicators</a>
+      <a href="#feedback">Results</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
+      <a href="#contact">Contact</a>
+    </nav>
+
+    <div class="nav-actions">
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle light and dark theme">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8L6 18M18 6l1.8-1.8"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+      </button>
+      <a href="#pricing" class="btn btn-primary btn-sm">Join Now</a>
+      <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <span class="eyebrow">Price Action &middot; Indicators &middot; Mentorship</span>
+        <h1>Trade the chart in front of you — <em>not the noise</em> around it.</h1>
+        <p class="hero-sub">
+          Techin By Raj teaches practical, price-action-first trading and builds the custom TradingView
+          indicators to back it up. No blind signals to follow — just a system you understand and can
+          run yourself, on any chart.
+        </p>
+        <div class="hero-ctas">
+          <a href="#pricing" class="btn btn-primary">Explore the Course</a>
+          <a href="#indicators" class="btn btn-ghost">See the Indicators</a>
+        </div>
+        <div class="hero-stats">
+          <div class="stat"><b class="tag-num" data-count="40" data-suffix="+">0</b><span>Video Lessons</span></div>
+          <div class="stat"><b class="tag-num" data-count="6" data-suffix="">0</b><span>Custom Indicators</span></div>
+          <div class="stat"><b class="tag-num" data-count="100" data-suffix="%">0</b><span>Lifetime Access</span></div>
+          <div class="stat"><b class="tag-num" data-count="1" data-suffix=":1">0</b><span>Doubt Support</span></div>
+        </div>
+      </div>
+
+      <div class="chart-panel">
+        <div class="chart-panel-head">
+          <span class="pair">LIVE CHART</span>
+          <span class="px" id="tvSymbolLabel">NSE:NIFTY</span>
+        </div>
+        <div id="tvChart" style="height:320px;border-radius:var(--radius-s);overflow:hidden;background:var(--surface-2);"></div>
+        <div class="chart-panel-foot">
+          <span>Powered by TradingView — live market data</span>
+          <span>1H</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Ticker -->
+  <section class="ticker-strip" aria-label="Sample market ticker, for illustration only">
+    <span class="fade left"></span>
+    <span class="fade right"></span>
+    <div class="ticker-track" id="tickerTrack"></div>
+  </section>
+
+  <!-- Why -->
+  <section class="section" id="why">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="eyebrow">Why Techin By Raj</span>
+        <h2>A system you can verify, not a signal you follow blindly</h2>
+        <p>Every course and every indicator is built around one idea: you should understand exactly why a trade works before you take it.</p>
+      </div>
+      <div class="grid-4">
+        <div class="feature-card reveal">
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-5 4 4 8-9"/><path d="M15 7h5v5"/></svg></span>
+          <h3>Price Action First</h3>
+          <p>Read raw candles, market structure, and liquidity before you ever reach for an indicator.</p>
+        </div>
+        <div class="feature-card reveal">
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12h8M8 8h8M8 16h5"/></svg></span>
+          <h3>Indicators You Can Verify</h3>
+          <p>Every custom indicator ships with the logic explained line by line — never a black box.</p>
+        </div>
+        <div class="feature-card reveal">
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7v6c0 5 4 8.5 9 9 5-.5 9-4 9-9V7l-9-5Z"/><path d="M9 12l2 2 4-4"/></svg></span>
+          <h3>Risk Before Reward</h3>
+          <p>Position sizing and risk management are taught before entries — every single time, no exceptions.</p>
+        </div>
+        <div class="feature-card reveal">
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span>
+          <h3>Real Chart Reviews</h3>
+          <p>Weekly live chart breakdowns on actual market sessions — not something recorded once and forgotten.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Courses -->
+  <section class="section section-alt" id="courses">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="eyebrow">Courses</span>
+        <h2>Structured, in order, no fluff</h2>
+        <p>Start from raw candles, layer in the indicator suite, then build the risk and options framework on top.</p>
+      </div>
+      <div class="grid-3" id="coursesGrid"></div>
+    </div>
+  </section>
+
+  <!-- Indicators -->
+  <section class="section" id="indicators">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="eyebrow">Custom Indicators</span>
+        <h2>Built and documented, not black-boxed</h2>
+        <p>Every indicator is written and backtested by Raj, with the logic explained — install on your own TradingView chart in minutes.</p>
+      </div>
+      <div class="grid-3" id="indicatorsGrid"></div>
+    </div>
+  </section>
+
+  <!-- Feedback -->
+  <section class="section section-alt" id="feedback">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="eyebrow">Student Feedback</span>
+        <h2>What students say</h2>
+        <p class="note-inline">Sample layout shown below — swap these placeholder quotes for real reviews from your own students before publishing.</p>
+      </div>
+      <div class="grid-3">
+        <div class="quote-card reveal">
+          <span class="stars">★★★★★</span>
+          <p>"The price-action framework finally made candles make sense instead of just memorizing patterns."</p>
+          <span class="who">— Student, Price Action Foundations</span>
+        </div>
+        <div class="quote-card reveal">
+          <span class="stars">★★★★★</span>
+          <p>"Installing the Trend Compass on my own chart and seeing exactly why it fires each signal was the turning point."</p>
+          <span class="who">— Student, Momentum &amp; Indicator Mastery</span>
+        </div>
+        <div class="quote-card reveal">
+          <span class="stars">★★★★★</span>
+          <p>"The risk management module changed how I size positions more than any entry technique ever did."</p>
+          <span class="who">— Student, Options &amp; Risk Management</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section class="section" id="pricing">
+    <div class="wrap">
+      <div class="section-head center reveal">
+        <span class="eyebrow">Pricing</span>
+        <h2>Pick your starting point</h2>
+        <p>Every plan includes lifetime access to the material you purchase and entry to the Telegram community.</p>
+      </div>
+      <div class="pricing-grid">
+
+        <div class="price-card reveal">
+          <h3>Starter</h3>
+          <div class="price tag-num">₹4,999</div>
+          <ul class="price-list">
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Price Action Foundations course</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Candlestick &amp; structure library</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Telegram community access</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Lifetime access</li>
+          </ul>
+          <a href="#contact" class="btn btn-ghost btn-block">Get Starter</a>
+        </div>
+
+        <div class="price-card featured reveal">
+          <span class="pill">Most Popular</span>
+          <h3>Pro</h3>
+          <div class="price tag-num">₹9,999</div>
+          <ul class="price-list">
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Everything in Starter</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Momentum &amp; Indicator Mastery course</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Trend Compass + Momentum Shift Scanner</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>4 live chart-review sessions</li>
+          </ul>
+          <a href="#contact" class="btn btn-primary btn-block">Get Pro</a>
+        </div>
+
+        <div class="price-card reveal">
+          <h3>Elite</h3>
+          <div class="price tag-num">₹12,999</div>
+          <ul class="price-list">
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Everything in Pro</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Options &amp; Risk Management course</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Smart Support/Resistance indicator</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>1:1 doubt-clearing calls</li>
+          </ul>
+          <a href="#contact" class="btn btn-ghost btn-block">Get Elite</a>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="section section-alt" id="faq">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="eyebrow">FAQ</span>
+        <h2>Good questions, straight answers</h2>
+      </div>
+      <div class="faq-list">
+        <details class="faq-item reveal">
+          <summary>Do I need trading experience before joining?<span class="plus"></span></summary>
+          <div class="faq-a">No prior experience is needed for Starter. Pro and Elite assume you've completed the Foundations material or can already read a basic chart.</div>
+        </details>
+        <details class="faq-item reveal">
+          <summary>Which platform do the indicators work on?<span class="plus"></span></summary>
+          <div class="faq-a">TradingView, written in Pine Script. A step-by-step installation guide is included, and they work on both free and paid TradingView plans.</div>
+        </details>
+        <details class="faq-item reveal">
+          <summary>Are the classes live or recorded?<span class="plus"></span></summary>
+          <div class="faq-a">Core curriculum is recorded so you can go at your own pace, plus scheduled live chart-review sessions each week for Pro and Elite.</div>
+        </details>
+        <details class="faq-item reveal">
+          <summary>Is there a refund policy?<span class="plus"></span></summary>
+          <div class="faq-a">Yes — a 7-day refund window applies if you've completed less than 20% of the course content. Full terms are shared at checkout.</div>
+        </details>
+        <details class="faq-item reveal">
+          <summary>Do you give buy/sell signals?<span class="plus"></span></summary>
+          <div class="faq-a">No. Techin By Raj teaches the system and gives you the tools — every decision on your own chart stays yours.</div>
+        </details>
+        <details class="faq-item reveal">
+          <summary>How do I get support if I'm stuck?<span class="plus"></span></summary>
+          <div class="faq-a">The Telegram community is open for daily questions, and the Elite plan includes 1:1 doubt-clearing calls.</div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact -->
+  <section class="section" id="contact">
+    <div class="wrap contact-grid">
+      <div class="reveal">
+        <span class="eyebrow">Contact</span>
+        <h2 style="margin-top:14px;font-size:clamp(26px,3.6vw,34px)">Let's talk trading</h2>
+        <p style="margin-top:14px;color:var(--ink-muted);max-width:46ch">Have a question about a course, an indicator, or which plan fits you? Reach out directly — replace these placeholder handles with your own.</p>
+        <div class="contact-links">
+          <a class="contact-link" href="https://wa.me/918954895501" target="_blank" rel="noopener">
+            <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.55L3 20l1.06-5.4A8.5 8.5 0 1 1 21 11.5Z"/><path d="M8.5 9.5c.3 2.5 2.5 4.7 5 5"/></svg></span>
+            <span>WhatsApp<small>+91 89548 95501</small></span>
+          </a>
+          <a class="contact-link" href="https://t.me/adityaraaa" target="_blank" rel="noopener">
+            <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4 3 11l6 2m12-9-4 17-8-6m12-11L9 13"/></svg></span>
+            <span>Telegram<small>@adityaraaa</small></span>
+          </a>
+          <a class="contact-link" href="https://instagram.com/aditya__raj02" target="_blank" rel="noopener">
+            <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1"/></svg></span>
+            <span>Instagram<small>@aditya__raj02</small></span>
+          </a>
+          <a class="contact-link" href="mailto:hello@techinbyraj.com">
+            <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg></span>
+            <span>Email<small>hello@techinbyraj.com — placeholder</small></span>
+          </a>
+        </div>
+      </div>
+
+      <div class="form-panel reveal">
+        <form id="contactForm">
+          <div class="field">
+            <label for="cfName">Name</label>
+            <input id="cfName" name="name" type="text" required />
+          </div>
+          <div class="field">
+            <label for="cfEmail">Email</label>
+            <input id="cfEmail" name="email" type="email" required />
+          </div>
+          <div class="field">
+            <label for="cfMessage">Message</label>
+            <textarea id="cfMessage" name="message" required></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Send Message</button>
+          <p class="form-note">This opens your email app with the message pre-filled — connect a form backend to collect these directly instead.</p>
+        </form>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div class="disclaimer">
+  <div class="wrap">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4m0 4h.01M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.7 3.86a2 2 0 0 0-3.4 0Z"/></svg>
+    <span>Educational content only. Trading and investing in financial markets carries risk, including loss of capital. Nothing on this site is investment advice, and past performance is not indicative of future results.</span>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a href="#top" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <line x1="5" y1="1" x2="5" y2="17" stroke="var(--accent)" stroke-width="1.4"/>
+              <rect x="2.5" y="6" width="5" height="6" rx="1" fill="var(--accent)"/>
+              <line x1="13" y1="3" x2="13" y2="15" stroke="var(--ink-faint)" stroke-width="1.4"/>
+              <rect x="10.5" y="7" width="5" height="4" rx="1" fill="var(--ink-faint)"/>
+            </svg>
+          </span>
+          <span>Techin<small>By Raj</small></span>
+        </a>
+        <p>Practical price-action trading education and custom TradingView indicators, taught by a trader — not a signal service.</p>
+      </div>
+      <div class="footer-cols">
+        <div class="footer-col">
+          <h4>Learn</h4>
+          <a href="#courses">Courses</a>
+          <a href="#indicators">Indicators</a>
+          <a href="#pricing">Pricing</a>
+        </div>
+        <div class="footer-col">
+          <h4>Company</h4>
+          <a href="#feedback">Results</a>
+          <a href="#faq">FAQ</a>
+          <a href="#contact">Contact</a>
+        </div>
+        <div class="footer-col">
+          <h4>Connect</h4>
+          <a href="https://wa.me/918954895501" target="_blank" rel="noopener">WhatsApp</a>
+          <a href="https://t.me/adityaraaa" target="_blank" rel="noopener">Telegram</a>
+          <a href="https://instagram.com/aditya__raj02" target="_blank" rel="noopener">Instagram</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© <span id="year"></span> Techin By Raj. All rights reserved.</span>
+      <span>Made for traders who read their own charts.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/render.js"></script>
+<script src="js/script.js"></script>
+</body>
+</html>
