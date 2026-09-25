@@ -9,13 +9,13 @@ const MAX_POLLS = 8;
 
 export default function PaymentSuccess() {
   const [params] = useSearchParams();
-  const sessionId = params.get("session_id");
+  const orderId = params.get("order_id");
   const { refresh } = useAuth();
   const [state, setState] = useState("checking"); // checking | paid | timeout | error
   const polls = useRef(0);
 
   useEffect(() => {
-    if (!sessionId) {
+    if (!orderId) {
       setState("error");
       return;
     }
@@ -23,7 +23,7 @@ export default function PaymentSuccess() {
     const poll = async () => {
       if (!active) return;
       try {
-        const { data } = await api.get(`/payments/status/${sessionId}`);
+        const { data } = await api.get(`/payments/status/${orderId}`);
         if (data.payment_status === "paid") {
           await refresh();
           if (active) setState("paid");
@@ -46,7 +46,7 @@ export default function PaymentSuccess() {
     };
     poll();
     return () => { active = false; };
-  }, [sessionId, refresh]);
+  }, [orderId, refresh]);
 
   return (
     <main className="min-h-screen grid place-items-center px-6 pt-24 pb-16">

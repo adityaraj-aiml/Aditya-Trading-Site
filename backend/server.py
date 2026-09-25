@@ -4,11 +4,12 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 import os
+import json
 import logging
 import uuid
 import bcrypt
 import jwt
-import stripe
+import razorpay
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List
 
@@ -32,9 +33,10 @@ app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
 JWT_ALGORITHM = "HS256"
-STRIPE_API_KEY = os.environ.get("STRIPE_API_KEY")
-STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET")
-stripe.api_key = STRIPE_API_KEY
+RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID")
+RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET")
+RAZORPAY_WEBHOOK_SECRET = os.environ.get("RAZORPAY_WEBHOOK_SECRET")
+razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID or "", RAZORPAY_KEY_SECRET or ""))
 
 # ------------------------------------------------------------------ Object storage (GridFS, in the same MongoDB)
 fs_bucket = AsyncIOMotorGridFSBucket(db, bucket_name="assets")
@@ -140,7 +142,11 @@ class LoginInput(BaseModel):
 
 class CheckoutInput(BaseModel):
     package_id: str
-    origin_url: str
+
+class VerifyInput(BaseModel):
+    razorpay_order_id: str
+    razorpay_payment_id: str
+    razorpay_signature: str
 
 # ------------------------------------------------------------------ Auth routes
 def public_user(user: dict) -> dict:
@@ -263,50 +269,35 @@ async def download_asset(asset_id: str, user: dict = Depends(get_current_user)):
                     headers={"Content-Disposition": f'attachment; filename="{record["original_filename"]}"'})
 
 # ------------------------------------------------------------------ Payments
-def _map_session_status(session) -> str:
-    """Map a Stripe Checkout Session to our internal payment_status vocabulary."""
-    if session.get("payment_status") == "paid":
-        return "paid"
-    if session.get("status") == "expired":
-        return "expired"
-    return "pending"
-
 @api_router.post("/payments/checkout")
-async def checkout(input: CheckoutInput, request: Request, user: dict = Depends(get_current_user)):
+async def checkout(input: CheckoutInput, user: dict = Depends(get_current_user)):
     pkg = CATALOG.get(input.package_id)
     if not pkg:
         raise HTTPException(status_code=404, detail="Product not found")
-    if not STRIPE_API_KEY:
-        raise HTTPException(status_code=500, detail="Payments are not configured (missing STRIPE_API_KEY)")
-    success_url = f"{input.origin_url}/payment/success?session_id={{CHECKOUT_SESSION_ID}}"
-    cancel_url = f"{input.origin_url}/payment/cancel"
+    if not (RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET):
+        raise HTTPException(status_code=500, detail="Payments are not configured (missing Razorpay keys)")
+    amount_paise = round(pkg["amount"] * 100)
     try:
-        session = stripe.checkout.Session.create(
-            mode="payment",
-            payment_method_types=["card"],
-            line_items=[{
-                "price_data": {
-                    "currency": pkg["currency"],
-                    "unit_amount": round(pkg["amount"] * 100),
-                    "product_data": {"name": pkg["name"]},
-                },
-                "quantity": 1,
-            }],
-            success_url=success_url,
-            cancel_url=cancel_url,
-            metadata={"user_id": user["id"], "package_id": pkg["id"]},
-        )
-    except stripe.error.StripeError as e:
+        order = razorpay_client.order.create({
+            "amount": amount_paise,
+            "currency": pkg["currency"].upper(),
+            "receipt": f"rcpt_{uuid.uuid4().hex[:20]}",
+            "notes": {"user_id": user["id"], "package_id": pkg["id"]},
+        })
+    except razorpay.errors.BadRequestError as e:
         logger.warning(f"checkout create error: {e}")
         raise HTTPException(status_code=502, detail="Could not start checkout")
     await db.payment_transactions.insert_one({
-        "session_id": session.id, "user_id": user["id"],
+        "order_id": order["id"], "user_id": user["id"],
         "package_id": pkg["id"], "amount": pkg["amount"], "currency": pkg["currency"],
         "status": "initiated", "payment_status": "pending",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat(),
     })
-    return {"checkout_url": session.url, "session_id": session.id}
+    return {
+        "order_id": order["id"], "amount": amount_paise, "currency": pkg["currency"].upper(),
+        "key_id": RAZORPAY_KEY_ID, "name": pkg["name"], "package_id": pkg["id"],
+    }
 
 async def _fulfill(record: dict):
     """Grant the purchased package to the user (idempotent)."""
@@ -315,53 +306,75 @@ async def _fulfill(record: dict):
         {"$addToSet": {"purchases": record["package_id"]}},
     )
 
-async def _apply_status(session_id: str, record: dict, new_status: str):
+async def _apply_status(order_id: str, record: dict, new_status: str):
     if new_status == record.get("payment_status"):
         return record
     upd = await db.payment_transactions.update_one(
-        {"session_id": session_id, "payment_status": {"$ne": "paid"}},
+        {"order_id": order_id, "payment_status": {"$ne": "paid"}},
         {"$set": {"status": "completed" if new_status == "paid" else new_status,
                   "payment_status": new_status,
                   "updated_at": datetime.now(timezone.utc).isoformat()}},
     )
     if upd.modified_count and new_status == "paid" and record.get("user_id"):
         await _fulfill(record)
-    return await db.payment_transactions.find_one({"session_id": session_id})
+    return await db.payment_transactions.find_one({"order_id": order_id})
 
-@api_router.get("/payments/status/{session_id}")
-async def payment_status(session_id: str):
-    record = await db.payment_transactions.find_one({"session_id": session_id})
+@api_router.post("/payments/verify")
+async def verify_payment(input: VerifyInput, user: dict = Depends(get_current_user)):
+    """Called by the frontend right after Razorpay's checkout modal reports success."""
+    record = await db.payment_transactions.find_one({"order_id": input.razorpay_order_id})
     if not record:
         raise HTTPException(status_code=404, detail="Transaction not found")
-    if record.get("payment_status") != "paid" and STRIPE_API_KEY:
+    if record.get("user_id") != user["id"]:
+        raise HTTPException(status_code=403, detail="Not your transaction")
+    try:
+        razorpay_client.utility.verify_payment_signature({
+            "razorpay_order_id": input.razorpay_order_id,
+            "razorpay_payment_id": input.razorpay_payment_id,
+            "razorpay_signature": input.razorpay_signature,
+        })
+    except razorpay.errors.SignatureVerificationError:
+        raise HTTPException(status_code=400, detail="Payment verification failed")
+    record = await _apply_status(input.razorpay_order_id, record, "paid")
+    return {"status": "ok", "package_id": record.get("package_id")}
+
+@api_router.get("/payments/status/{order_id}")
+async def payment_status(order_id: str):
+    record = await db.payment_transactions.find_one({"order_id": order_id})
+    if not record:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    if record.get("payment_status") != "paid" and RAZORPAY_KEY_ID:
         try:
-            session = stripe.checkout.Session.retrieve(session_id)
-            mapped = _map_session_status(session)
-            if mapped != "pending":
-                record = await _apply_status(session_id, record, mapped)
-        except stripe.error.StripeError as e:
+            order = razorpay_client.order.fetch(order_id)
+            if order.get("status") == "paid":
+                record = await _apply_status(order_id, record, "paid")
+        except razorpay.errors.BadRequestError as e:
             logger.warning(f"status poll error: {e}")
-    return {"session_id": record["session_id"], "status": record["status"],
+    return {"order_id": record["order_id"], "status": record["status"],
             "payment_status": record["payment_status"], "package_id": record.get("package_id")}
 
-@api_router.post("/webhook/stripe")
-async def stripe_webhook(request: Request):
+@api_router.post("/webhook/razorpay")
+async def razorpay_webhook(request: Request):
     body = await request.body()
-    sig = request.headers.get("Stripe-Signature", "")
-    if not STRIPE_WEBHOOK_SECRET:
-        raise HTTPException(status_code=500, detail="Webhook is not configured (missing STRIPE_WEBHOOK_SECRET)")
+    sig = request.headers.get("X-Razorpay-Signature", "")
+    if not RAZORPAY_WEBHOOK_SECRET:
+        raise HTTPException(status_code=500, detail="Webhook is not configured (missing RAZORPAY_WEBHOOK_SECRET)")
     try:
-        event = stripe.Webhook.construct_event(body, sig, STRIPE_WEBHOOK_SECRET)
-    except (ValueError, stripe.error.SignatureVerificationError) as e:
+        razorpay_client.utility.verify_webhook_signature(body.decode("utf-8"), sig, RAZORPAY_WEBHOOK_SECRET)
+    except razorpay.errors.SignatureVerificationError as e:
         logger.warning(f"webhook error: {e}")
         raise HTTPException(status_code=400, detail="Webhook error")
 
-    if event["type"] in ("checkout.session.completed", "checkout.session.async_payment_succeeded",
-                          "checkout.session.expired"):
-        session = event["data"]["object"]
-        record = await db.payment_transactions.find_one({"session_id": session["id"]})
-        if record:
-            await _apply_status(session["id"], record, _map_session_status(session))
+    payload = json.loads(body)
+    event = payload.get("event")
+    if event in ("payment.captured", "order.paid"):
+        entity = (payload.get("payload", {}).get("payment", {}).get("entity")
+                  or payload.get("payload", {}).get("order", {}).get("entity"))
+        order_id = (entity or {}).get("order_id") or (entity or {}).get("id")
+        if order_id:
+            record = await db.payment_transactions.find_one({"order_id": order_id})
+            if record:
+                await _apply_status(order_id, record, "paid")
     return {"status": "ok"}
 
 # ------------------------------------------------------------------ Startup

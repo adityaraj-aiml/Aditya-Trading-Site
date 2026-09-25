@@ -5,7 +5,7 @@ Build a course-selling website for "Techin By Raj". Sell a trading indicator (se
 
 ## User Choices
 - Sell both indicator + courses now
-- Online payment via Stripe (test mode), instant access
+- Online payment via Razorpay (test mode), instant access
 - User accounts with login (JWT email/password)
 - Indicator price: ₹5499 (INR)
 - Design: dark, premium trading/finance look
@@ -13,7 +13,7 @@ Build a course-selling website for "Techin By Raj". Sell a trading indicator (se
 ## Architecture
 - Frontend: React 19, react-router, framer-motion, Lenis smooth scroll, Tailwind, shadcn/ui, sonner
 - Backend: FastAPI, Motor (MongoDB), JWT (httpOnly cookie) auth, bcrypt
-- Payments: Stripe, called directly via the official `stripe` Python SDK (own `STRIPE_API_KEY` + `STRIPE_WEBHOOK_SECRET`, no third-party proxy). Currency INR. Webhook at /api/webhook/stripe, status polling at /api/payments/status/{id}.
+- Payments: Razorpay, via the official `razorpay` Python SDK + Razorpay Checkout.js on the frontend (own `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / `RAZORPAY_WEBHOOK_SECRET`). Currency INR. Order created server-side, paid via an inline JS modal (no redirect), verified via signature check in /api/payments/verify, with /api/webhook/razorpay and /api/payments/status/{order_id} as reliability backstops.
 - Design: Cabinet Grotesk + IBM Plex, obsidian #050505 + volt #E2FF4A accent, grain overlay, kinetic masked hero, marquee, numbered method chapters.
 
 ## User Personas
@@ -23,7 +23,7 @@ Build a course-selling website for "Techin By Raj". Sell a trading indicator (se
 ## Core Requirements (static)
 - Landing page (hero, indicator, method, courses, pricing, FAQ)
 - Auth (signup/login/logout, session via cookie)
-- Stripe checkout for 3 products, instant access on success
+- Razorpay checkout for 3 products, instant access on success
 - Dashboard showing owned + locked products
 
 ## Implemented (2026-08-20)
@@ -38,6 +38,11 @@ Build a course-selling website for "Techin By Raj". Sell a trading indicator (se
 - Fixed React StrictMode race that hid the TradingView chart behind its fallback
 - Auth modal with buy-gating; Dashboard library (owned assets + locked) + admin upload panel; payment success/cancel pages
 - Verified: backend curl (auth, products, checkout, storage upload/download/403, lockout) + testing agent frontend e2e 100% (2 iterations)
+
+## Implemented (2026-09-26)
+- Removed all Emergent platform dependencies: payments and storage no longer route through emergentintegrations / integrations.emergentagent.com
+- Payments switched from Stripe to Razorpay: order created server-side via the `razorpay` SDK, paid through an inline Checkout.js modal (no redirect), verified via signature check at /api/payments/verify, with /api/webhook/razorpay and /api/payments/status/{order_id} as backstops
+- File storage switched from Emergent's object-storage proxy to MongoDB GridFS in the same database
 
 ## Backlog / Remaining
 - P1: Claude AI trading assistant (playbook fetched; awaiting user's use-case + model choice, and a direct Anthropic API key)
