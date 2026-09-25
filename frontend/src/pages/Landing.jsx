@@ -16,11 +16,11 @@ const COURSE_IMG =
 
 // Real indicator proof screenshots provided by Raj
 const PROOF = {
-  main: "https://customer-assets-agu9un31.emergentagent.net/job_techin-marketplace/artifacts/rficnssw_Screenshot%202026-08-05%20160403%20-%20Copy.png",
-  tps5: "https://customer-assets-agu9un31.emergentagent.net/job_techin-marketplace/artifacts/87vf52gf_Screenshot%202026-07-22%20123147%20-%20Copy.png",
-  dash: "https://customer-assets-agu9un31.emergentagent.net/job_techin-marketplace/artifacts/5e8fj0an_Screenshot%202026-07-25%20084519%20-%20Copy.png",
-  crop: "https://customer-assets-agu9un31.emergentagent.net/job_techin-marketplace/artifacts/yv7rgyfo_Screenshot%202026-07-25%20083320%20-%20Copy.png",
-  zone: "https://customer-assets-agu9un31.emergentagent.net/job_techin-marketplace/artifacts/dql2a6en_Screenshot%202026-07-22%20113254%20-%20Copy.png",
+  main: process.env.PUBLIC_URL + "/proof/main.png",
+  tps5: process.env.PUBLIC_URL + "/proof/tps5.png",
+  dash: process.env.PUBLIC_URL + "/proof/dash.png",
+  crop: process.env.PUBLIC_URL + "/proof/crop.png",
+  zone: process.env.PUBLIC_URL + "/proof/zone.png",
 };
 
 const SOCIALS = {
