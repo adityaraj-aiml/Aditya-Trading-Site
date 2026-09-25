@@ -13,7 +13,7 @@ Build a course-selling website for "Techin By Raj". Sell a trading indicator (se
 ## Architecture
 - Frontend: React 19, react-router, framer-motion, Lenis smooth scroll, Tailwind, shadcn/ui, sonner
 - Backend: FastAPI, Motor (MongoDB), JWT (httpOnly cookie) auth, bcrypt
-- Payments: Stripe via emergentintegrations (shared test sandbox `sk_test_emergent`; India not eligible for claimable sandbox). Currency INR. Webhook at /api/webhook/stripe, status polling at /api/payments/status/{id}.
+- Payments: Stripe, called directly via the official `stripe` Python SDK (own `STRIPE_API_KEY` + `STRIPE_WEBHOOK_SECRET`, no third-party proxy). Currency INR. Webhook at /api/webhook/stripe, status polling at /api/payments/status/{id}.
 - Design: Cabinet Grotesk + IBM Plex, obsidian #050505 + volt #E2FF4A accent, grain overlay, kinetic masked hero, marquee, numbered method chapters.
 
 ## User Personas
@@ -32,7 +32,7 @@ Build a course-selling website for "Techin By Raj". Sell a trading indicator (se
 - Stripe checkout + status polling + webhook; fulfillment adds product to user.purchases
 - Award-level dark landing page with framer-motion + Lenis; distinctive outlined/fill hero wordmark; custom candlestick logo mark
 - Real TradingView candlestick chart in Indicator section (with load fallback)
-- File & media storage (Emergent object storage): admin uploads product files per product; buyers download owned assets from dashboard; gated /api/assets/{id}/download (owner/admin only)
+- File & media storage (MongoDB GridFS, same database — no third-party storage service): admin uploads product files per product; buyers download owned assets from dashboard; gated /api/assets/{id}/download (owner/admin only)
 - Proof / Results section (#results): real indicator screenshots (LONG/SHORT + TP1–TP5 targets) with a "how to read it" legend, object-contain framing (no cropping), click-to-enlarge
 - Social links live: Telegram (t.me/themindfultrader), Instagram (aditya__raj02), Email (withadityat@gmail.com) — in Results section + footer
 - Fixed React StrictMode race that hid the TradingView chart behind its fallback
@@ -40,7 +40,7 @@ Build a course-selling website for "Techin By Raj". Sell a trading indicator (se
 - Verified: backend curl (auth, products, checkout, storage upload/download/403, lockout) + testing agent frontend e2e 100% (2 iterations)
 
 ## Backlog / Remaining
-- P1: Claude AI trading assistant (playbook fetched; awaiting user's use-case + model choice — Emergent key ready)
+- P1: Claude AI trading assistant (playbook fetched; awaiting user's use-case + model choice, and a direct Anthropic API key)
 - P1: Password reset (forgot-password) flow
 - P1: Course video player UI (files can be uploaded/downloaded; no in-app player yet)
 - P2: Email confirmations (Resend), order history/receipts

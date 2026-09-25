@@ -6,9 +6,9 @@ load_dotenv(ROOT_DIR / '.env')
 import os
 import logging
 import uuid
-import requests
 import bcrypt
 import jwt
+import stripe
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List
 
@@ -17,13 +17,11 @@ from fastapi import (
     UploadFile, File, Form,
 )
 from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorGridFSBucket
 from pydantic import BaseModel, EmailStr, Field
 from bson import ObjectId
-
-from emergentintegrations.payments.stripe.checkout import (
-    StripeCheckout, CheckoutSessionRequest, CheckoutStatusResponse,
-)
+from bson.errors import InvalidId
+from gridfs.errors import NoFile
 
 # ------------------------------------------------------------------ DB
 mongo_url = os.environ['MONGO_URL']
@@ -34,50 +32,32 @@ app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
 JWT_ALGORITHM = "HS256"
-STRIPE_API_KEY = os.environ.get("STRIPE_API_KEY", "sk_test_emergent")
+STRIPE_API_KEY = os.environ.get("STRIPE_API_KEY")
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET")
+stripe.api_key = STRIPE_API_KEY
 
-# ------------------------------------------------------------------ Object storage
-STORAGE_BASE = (os.environ.get("INTEGRATION_PROXY_URL") or "").strip() or "https://integrations.emergentagent.com"
-STORAGE_URL = STORAGE_BASE.rstrip("/") + "/objstore/api/v1/storage"
-EMERGENT_KEY = os.environ.get("EMERGENT_LLM_KEY")
-APP_NAME = "techinbyraj"
-_storage_key = None
+# ------------------------------------------------------------------ Object storage (GridFS, in the same MongoDB)
+fs_bucket = AsyncIOMotorGridFSBucket(db, bucket_name="assets")
 MIME_TYPES = {
     "jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "gif": "image/gif",
     "webp": "image/webp", "pdf": "application/pdf", "zip": "application/zip",
     "mp4": "video/mp4", "mov": "video/quicktime", "csv": "text/csv", "txt": "text/plain",
 }
 
-def init_storage(force: bool = False):
-    global _storage_key
-    if _storage_key and not force:
-        return _storage_key
-    resp = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_KEY}, timeout=30)
-    resp.raise_for_status()
-    _storage_key = resp.json()["storage_key"]
-    return _storage_key
+async def put_object(filename: str, data: bytes, content_type: str) -> str:
+    file_id = await fs_bucket.upload_from_stream(
+        filename, data, metadata={"content_type": content_type},
+    )
+    return str(file_id)
 
-def put_object(path: str, data: bytes, content_type: str) -> dict:
-    key = init_storage()
-    resp = requests.put(f"{STORAGE_URL}/objects/{path}",
-                        headers={"X-Storage-Key": key, "Content-Type": content_type},
-                        data=data, timeout=120)
-    if resp.status_code == 404:
-        key = init_storage(force=True)
-        resp = requests.put(f"{STORAGE_URL}/objects/{path}",
-                            headers={"X-Storage-Key": key, "Content-Type": content_type},
-                            data=data, timeout=120)
-    resp.raise_for_status()
-    return resp.json()
-
-def get_object(path: str):
-    key = init_storage()
-    resp = requests.get(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key}, timeout=60)
-    if resp.status_code == 404:
-        key = init_storage(force=True)
-        resp = requests.get(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key}, timeout=60)
-    resp.raise_for_status()
-    return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
+async def get_object(file_id: str):
+    try:
+        stream = await fs_bucket.open_download_stream(ObjectId(file_id))
+    except (InvalidId, NoFile):
+        raise HTTPException(status_code=404, detail="File not found")
+    data = await stream.read()
+    content_type = (stream.metadata or {}).get("content_type", "application/octet-stream")
+    return data, content_type
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -238,13 +218,12 @@ async def upload_asset(package_id: str, title: str = Form(...), file: UploadFile
     if package_id not in CATALOG:
         raise HTTPException(status_code=404, detail="Product not found")
     ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "bin"
-    path = f"{APP_NAME}/assets/{package_id}/{uuid.uuid4()}.{ext}"
     data = await file.read()
     content_type = file.content_type or MIME_TYPES.get(ext, "application/octet-stream")
-    result = put_object(path, data, content_type)
+    file_id = await put_object(file.filename, data, content_type)
     doc = {"id": str(uuid.uuid4()), "package_id": package_id, "title": title,
-           "storage_path": result["path"], "original_filename": file.filename,
-           "content_type": content_type, "size": result.get("size", len(data)),
+           "storage_id": file_id, "original_filename": file.filename,
+           "content_type": content_type, "size": len(data),
            "is_deleted": False, "created_at": datetime.now(timezone.utc).isoformat()}
     await db.product_assets.insert_one(doc)
     return asset_public(doc)
@@ -279,35 +258,55 @@ async def download_asset(asset_id: str, user: dict = Depends(get_current_user)):
     owns = record["package_id"] in user.get("purchases", [])
     if not owns and user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="You don't own this product")
-    data, content_type = get_object(record["storage_path"])
+    data, content_type = await get_object(record["storage_id"])
     return Response(content=data, media_type=record.get("content_type", content_type),
                     headers={"Content-Disposition": f'attachment; filename="{record["original_filename"]}"'})
 
 # ------------------------------------------------------------------ Payments
+def _map_session_status(session) -> str:
+    """Map a Stripe Checkout Session to our internal payment_status vocabulary."""
+    if session.get("payment_status") == "paid":
+        return "paid"
+    if session.get("status") == "expired":
+        return "expired"
+    return "pending"
+
 @api_router.post("/payments/checkout")
 async def checkout(input: CheckoutInput, request: Request, user: dict = Depends(get_current_user)):
     pkg = CATALOG.get(input.package_id)
     if not pkg:
         raise HTTPException(status_code=404, detail="Product not found")
-    host_url = str(request.base_url)
-    webhook_url = f"{host_url}api/webhook/stripe"
-    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
+    if not STRIPE_API_KEY:
+        raise HTTPException(status_code=500, detail="Payments are not configured (missing STRIPE_API_KEY)")
     success_url = f"{input.origin_url}/payment/success?session_id={{CHECKOUT_SESSION_ID}}"
     cancel_url = f"{input.origin_url}/payment/cancel"
-    req = CheckoutSessionRequest(
-        amount=pkg["amount"], currency=pkg["currency"],
-        success_url=success_url, cancel_url=cancel_url,
-        metadata={"user_id": user["id"], "package_id": pkg["id"]},
-    )
-    session = await stripe_checkout.create_checkout_session(req)
+    try:
+        session = stripe.checkout.Session.create(
+            mode="payment",
+            payment_method_types=["card"],
+            line_items=[{
+                "price_data": {
+                    "currency": pkg["currency"],
+                    "unit_amount": round(pkg["amount"] * 100),
+                    "product_data": {"name": pkg["name"]},
+                },
+                "quantity": 1,
+            }],
+            success_url=success_url,
+            cancel_url=cancel_url,
+            metadata={"user_id": user["id"], "package_id": pkg["id"]},
+        )
+    except stripe.error.StripeError as e:
+        logger.warning(f"checkout create error: {e}")
+        raise HTTPException(status_code=502, detail="Could not start checkout")
     await db.payment_transactions.insert_one({
-        "session_id": session.session_id, "user_id": user["id"],
+        "session_id": session.id, "user_id": user["id"],
         "package_id": pkg["id"], "amount": pkg["amount"], "currency": pkg["currency"],
         "status": "initiated", "payment_status": "pending",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat(),
     })
-    return {"checkout_url": session.url, "session_id": session.session_id}
+    return {"checkout_url": session.url, "session_id": session.id}
 
 async def _fulfill(record: dict):
     """Grant the purchased package to the user (idempotent)."""
@@ -316,25 +315,31 @@ async def _fulfill(record: dict):
         {"$addToSet": {"purchases": record["package_id"]}},
     )
 
+async def _apply_status(session_id: str, record: dict, new_status: str):
+    if new_status == record.get("payment_status"):
+        return record
+    upd = await db.payment_transactions.update_one(
+        {"session_id": session_id, "payment_status": {"$ne": "paid"}},
+        {"$set": {"status": "completed" if new_status == "paid" else new_status,
+                  "payment_status": new_status,
+                  "updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    if upd.modified_count and new_status == "paid" and record.get("user_id"):
+        await _fulfill(record)
+    return await db.payment_transactions.find_one({"session_id": session_id})
+
 @api_router.get("/payments/status/{session_id}")
 async def payment_status(session_id: str):
     record = await db.payment_transactions.find_one({"session_id": session_id})
     if not record:
         raise HTTPException(status_code=404, detail="Transaction not found")
-    if record.get("payment_status") != "paid":
+    if record.get("payment_status") != "paid" and STRIPE_API_KEY:
         try:
-            stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url="")
-            status: CheckoutStatusResponse = await stripe_checkout.get_checkout_status(session_id)
-            if status.payment_status == "paid":
-                upd = await db.payment_transactions.update_one(
-                    {"session_id": session_id, "payment_status": {"$ne": "paid"}},
-                    {"$set": {"status": "completed", "payment_status": "paid",
-                              "updated_at": datetime.now(timezone.utc).isoformat()}},
-                )
-                if upd.modified_count and record.get("user_id"):
-                    await _fulfill(record)
-                record = await db.payment_transactions.find_one({"session_id": session_id})
-        except Exception as e:
+            session = stripe.checkout.Session.retrieve(session_id)
+            mapped = _map_session_status(session)
+            if mapped != "pending":
+                record = await _apply_status(session_id, record, mapped)
+        except stripe.error.StripeError as e:
             logger.warning(f"status poll error: {e}")
     return {"session_id": record["session_id"], "status": record["status"],
             "payment_status": record["payment_status"], "package_id": record.get("package_id")}
@@ -343,22 +348,20 @@ async def payment_status(session_id: str):
 async def stripe_webhook(request: Request):
     body = await request.body()
     sig = request.headers.get("Stripe-Signature", "")
+    if not STRIPE_WEBHOOK_SECRET:
+        raise HTTPException(status_code=500, detail="Webhook is not configured (missing STRIPE_WEBHOOK_SECRET)")
     try:
-        stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url="")
-        wh = await stripe_checkout.handle_webhook(body, sig)
-    except Exception as e:
+        event = stripe.Webhook.construct_event(body, sig, STRIPE_WEBHOOK_SECRET)
+    except (ValueError, stripe.error.SignatureVerificationError) as e:
         logger.warning(f"webhook error: {e}")
         raise HTTPException(status_code=400, detail="Webhook error")
-    if wh.payment_status == "paid":
-        record = await db.payment_transactions.find_one({"session_id": wh.session_id})
+
+    if event["type"] in ("checkout.session.completed", "checkout.session.async_payment_succeeded",
+                          "checkout.session.expired"):
+        session = event["data"]["object"]
+        record = await db.payment_transactions.find_one({"session_id": session["id"]})
         if record:
-            upd = await db.payment_transactions.update_one(
-                {"session_id": wh.session_id, "payment_status": {"$ne": "paid"}},
-                {"$set": {"status": "completed", "payment_status": "paid",
-                          "updated_at": datetime.now(timezone.utc).isoformat()}},
-            )
-            if upd.modified_count and record.get("user_id"):
-                await _fulfill(record)
+            await _apply_status(session["id"], record, _map_session_status(session))
     return {"status": "ok"}
 
 # ------------------------------------------------------------------ Startup
@@ -366,11 +369,6 @@ async def stripe_webhook(request: Request):
 async def startup():
     await db.users.create_index("email", unique=True)
     await db.login_attempts.create_index("identifier", unique=True)
-    try:
-        init_storage()
-        logger.info("Storage initialized")
-    except Exception as e:
-        logger.error(f"Storage init failed: {e}")
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@example.com")
     admin_pw = os.environ.get("ADMIN_PASSWORD", "admin123")
     existing = await db.users.find_one({"email": admin_email})
