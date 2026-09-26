@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { TrendingUp, GraduationCap, Lock, ArrowUpRight, Download, Upload, Trash2, FileText } from "lucide-react";
+import { TrendingUp, GraduationCap, Lock, ArrowUpRight, Download, Play, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { api, INR } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useModal } from "@/context/ModalContext";
+import VideoModal from "@/components/VideoModal";
 
 const ICONS = { indicator_pro: TrendingUp, course_beginner: GraduationCap, course_pro: GraduationCap };
 
@@ -27,6 +28,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [library, setLibrary] = useState([]);
+  const [playing, setPlaying] = useState(null);
 
   const loadLibrary = useCallback(async () => {
     try {
@@ -94,10 +96,11 @@ export default function Dashboard() {
                     ) : (
                       <div className="space-y-2">
                         {assets.map((a) => (
-                          <button key={a.id} onClick={() => downloadAsset(a).catch(() => toast.error("Download failed"))}
+                          <button key={a.id}
+                            onClick={() => (a.is_video ? setPlaying(a) : downloadAsset(a).catch(() => toast.error("Download failed")))}
                             className="w-full flex items-center gap-3 border border-white/10 py-3 px-3 rounded-lg text-sm text-left hover:border-[#E2FF4A] hover:text-[#E2FF4A] transition-colors"
-                            data-testid={`download-${a.id}`}>
-                            <Download size={15} className="shrink-0" />
+                            data-testid={`${a.is_video ? "play" : "download"}-${a.id}`}>
+                            {a.is_video ? <Play size={15} className="shrink-0" /> : <Download size={15} className="shrink-0" />}
                             <span className="truncate flex-1">{a.title}</span>
                           </button>
                         ))}
@@ -129,93 +132,17 @@ export default function Dashboard() {
         )}
 
         {user.role === "admin" && (
-          <AdminPanel products={products} onChange={loadLibrary} />
+          <Link to="/admin" className="mt-24 flex items-center justify-between gap-6 border border-[#E2FF4A]/30 rounded-xl p-8 bg-[#0A0A0A] hover:border-[#E2FF4A] transition-colors" data-testid="admin-panel-link">
+            <div>
+              <p className="label mb-2 !text-[#E2FF4A]">Admin</p>
+              <h2 className="font-display font-bold text-2xl">Open the admin panel</h2>
+              <p className="text-sm text-zinc-500 mt-1">Upload and update videos, manage users and access, view payments.</p>
+            </div>
+            <ShieldCheck size={28} className="text-[#E2FF4A] shrink-0" />
+          </Link>
         )}
       </div>
+      <VideoModal asset={playing} onClose={() => setPlaying(null)} />
     </main>
-  );
-}
-
-function AdminPanel({ products }) {
-  return (
-    <section className="mt-24 border-t border-white/10 pt-14" data-testid="admin-panel">
-      <p className="label mb-4">Admin · Content delivery</p>
-      <h2 className="font-display font-bold text-2xl mb-8">Upload product files</h2>
-      <div className="grid md:grid-cols-3 gap-6">
-        {products.map((p) => <AdminProductUploader key={p.id} product={p} />)}
-      </div>
-    </section>
-  );
-}
-
-function AdminProductUploader({ product }) {
-  const [assets, setAssets] = useState([]);
-  const [title, setTitle] = useState("");
-  const [file, setFile] = useState(null);
-  const [busy, setBusy] = useState(false);
-
-  const load = useCallback(async () => {
-    try {
-      const { data } = await api.get(`/admin/products/${product.id}/assets`);
-      setAssets(data);
-    } catch { /* ignore */ }
-  }, [product.id]);
-
-  useEffect(() => { load(); }, [load]);
-
-  const upload = async (e) => {
-    e.preventDefault();
-    if (!file || !title) return toast.error("Add a title and choose a file");
-    setBusy(true);
-    try {
-      const fd = new FormData();
-      fd.append("title", title);
-      fd.append("file", file);
-      await api.post(`/admin/products/${product.id}/assets`, fd, { headers: { "Content-Type": "multipart/form-data" } });
-      toast.success("File uploaded");
-      setTitle(""); setFile(null);
-      e.target.reset();
-      load();
-    } catch {
-      toast.error("Upload failed");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const remove = async (id) => {
-    await api.delete(`/admin/assets/${id}`).catch(() => {});
-    load();
-  };
-
-  return (
-    <div className="border border-white/10 rounded-xl p-6 bg-[#0A0A0A]" data-testid={`admin-uploader-${product.id}`}>
-      <h3 className="font-display font-bold text-lg mb-4">{product.name}</h3>
-      <form onSubmit={upload} className="space-y-3 mb-5">
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="File title (e.g. Indicator v1)"
-          className="w-full bg-transparent border-b-2 border-white/15 py-2 text-sm text-white placeholder:text-zinc-600 outline-none focus:border-[#E2FF4A] transition-colors"
-          data-testid={`admin-title-${product.id}`} />
-        <input type="file" onChange={(e) => setFile(e.target.files[0])}
-          className="w-full text-xs text-zinc-400 file:mr-3 file:py-2 file:px-3 file:rounded-full file:border-0 file:bg-white/10 file:text-white file:text-xs hover:file:bg-white/20"
-          data-testid={`admin-file-${product.id}`} />
-        <button type="submit" disabled={busy}
-          className="w-full flex items-center justify-center gap-2 bg-[#E2FF4A] text-black text-sm font-medium py-2.5 rounded-full hover:bg-[#C8E631] transition-colors disabled:opacity-60"
-          data-testid={`admin-upload-btn-${product.id}`}>
-          <Upload size={14} /> {busy ? "Uploading…" : "Upload"}
-        </button>
-      </form>
-      <div className="space-y-2">
-        {assets.length === 0 && <p className="text-xs text-zinc-400">No files yet.</p>}
-        {assets.map((a) => (
-          <div key={a.id} className="flex items-center gap-2 text-xs text-zinc-400 border border-white/5 rounded-lg px-3 py-2">
-            <FileText size={13} className="text-[#E2FF4A] shrink-0" />
-            <span className="truncate flex-1">{a.title}</span>
-            <button onClick={() => remove(a.id)} className="text-zinc-600 hover:text-red-400 transition-colors" data-testid={`admin-delete-${a.id}`}>
-              <Trash2 size={13} />
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>
   );
 }

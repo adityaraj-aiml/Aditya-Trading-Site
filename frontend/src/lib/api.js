@@ -7,6 +7,16 @@ export const api = axios.create({
   withCredentials: true,
 });
 
+// Direct URL for <video src>; auth rides on the access_token cookie.
+export const streamUrl = (assetId) => `${BACKEND_URL}/api/assets/${assetId}/stream`;
+
+export const fileSize = (bytes) => {
+  if (!bytes) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  return `${(bytes / 1024 ** i).toFixed(i ? 1 : 0)} ${units[i]}`;
+};
+
 export function formatApiErrorDetail(detail) {
   if (detail == null) return "Something went wrong. Please try again.";
   if (typeof detail === "string") return detail;

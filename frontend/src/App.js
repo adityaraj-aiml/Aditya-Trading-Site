@@ -10,6 +10,7 @@ import Footer from "@/components/Footer";
 import AuthModal from "@/components/AuthModal";
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
+import Admin from "@/pages/Admin";
 import PaymentSuccess from "@/pages/PaymentSuccess";
 import PaymentCancel from "@/pages/PaymentCancel";
 
@@ -44,6 +45,7 @@ function App() {
             <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/admin" element={<Admin />} />
               <Route path="/payment/success" element={<PaymentSuccess />} />
               <Route path="/payment/cancel" element={<PaymentCancel />} />
             </Routes>

@@ -4,6 +4,7 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 import os
+import re
 import json
 import logging
 import uuid
@@ -17,6 +18,7 @@ from fastapi import (
     FastAPI, APIRouter, Request, Response, HTTPException, Depends,
     UploadFile, File, Form,
 )
+from fastapi.responses import StreamingResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorGridFSBucket
 from pydantic import BaseModel, EmailStr, Field
@@ -43,23 +45,37 @@ fs_bucket = AsyncIOMotorGridFSBucket(db, bucket_name="assets")
 MIME_TYPES = {
     "jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "gif": "image/gif",
     "webp": "image/webp", "pdf": "application/pdf", "zip": "application/zip",
-    "mp4": "video/mp4", "mov": "video/quicktime", "csv": "text/csv", "txt": "text/plain",
+    "mp4": "video/mp4", "mov": "video/quicktime", "webm": "video/webm", "mkv": "video/x-matroska",
+    "m4v": "video/x-m4v", "csv": "text/csv", "txt": "text/plain",
 }
 
-async def put_object(filename: str, data: bytes, content_type: str) -> str:
-    file_id = await fs_bucket.upload_from_stream(
-        filename, data, metadata={"content_type": content_type},
-    )
-    return str(file_id)
+STREAM_CHUNK = 1024 * 1024
 
-async def get_object(file_id: str):
+async def put_upload(file: UploadFile):
+    """Stream an upload into GridFS without loading it fully into memory. Returns (id, type, size)."""
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "bin"
+    content_type = file.content_type or MIME_TYPES.get(ext, "application/octet-stream")
+    if content_type == "application/octet-stream":
+        content_type = MIME_TYPES.get(ext, content_type)
+    file.file.seek(0, 2)
+    size = file.file.tell()
+    file.file.seek(0)
+    file_id = await fs_bucket.upload_from_stream(
+        file.filename, file.file, metadata={"content_type": content_type},
+    )
+    return str(file_id), content_type, size
+
+async def delete_object(file_id: str):
     try:
-        stream = await fs_bucket.open_download_stream(ObjectId(file_id))
+        await fs_bucket.delete(ObjectId(file_id))
+    except (InvalidId, NoFile):
+        pass
+
+async def open_object(file_id: str):
+    try:
+        return await fs_bucket.open_download_stream(ObjectId(file_id))
     except (InvalidId, NoFile):
         raise HTTPException(status_code=404, detail="File not found")
-    data = await stream.read()
-    content_type = (stream.metadata or {}).get("content_type", "application/octet-stream")
-    return data, content_type
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -215,58 +231,239 @@ async def require_admin(user: dict = Depends(get_current_user)) -> dict:
 
 def asset_public(a: dict) -> dict:
     return {"id": a["id"], "package_id": a["package_id"], "title": a["title"],
+            "description": a.get("description", ""), "position": a.get("position", 0),
             "original_filename": a["original_filename"], "content_type": a["content_type"],
-            "size": a["size"], "created_at": a["created_at"]}
+            "is_video": a["content_type"].startswith("video/"),
+            "size": a["size"], "created_at": a["created_at"], "updated_at": a.get("updated_at")}
+
+async def list_package_assets(package_id: str) -> list:
+    docs = await db.product_assets.find({"package_id": package_id, "is_deleted": False}) \
+        .sort([("position", 1), ("created_at", 1)]).to_list(1000)
+    return [asset_public(d) for d in docs]
+
+async def get_asset_or_404(asset_id: str) -> dict:
+    record = await db.product_assets.find_one({"id": asset_id, "is_deleted": False})
+    if not record:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    return record
+
+# ---- Admin: content (videos & files)
+class AssetUpdateInput(BaseModel):
+    title: Optional[str] = Field(default=None, min_length=1)
+    description: Optional[str] = None
+    package_id: Optional[str] = None
+
+class ReorderInput(BaseModel):
+    asset_ids: List[str]
 
 @api_router.post("/admin/products/{package_id}/assets")
-async def upload_asset(package_id: str, title: str = Form(...), file: UploadFile = File(...),
-                       admin: dict = Depends(require_admin)):
+async def upload_asset(package_id: str, title: str = Form(...), description: str = Form(""),
+                       file: UploadFile = File(...), admin: dict = Depends(require_admin)):
     if package_id not in CATALOG:
         raise HTTPException(status_code=404, detail="Product not found")
-    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "bin"
-    data = await file.read()
-    content_type = file.content_type or MIME_TYPES.get(ext, "application/octet-stream")
-    file_id = await put_object(file.filename, data, content_type)
+    file_id, content_type, size = await put_upload(file)
+    last = await db.product_assets.find_one({"package_id": package_id, "is_deleted": False},
+                                            sort=[("position", -1)])
+    now = datetime.now(timezone.utc).isoformat()
     doc = {"id": str(uuid.uuid4()), "package_id": package_id, "title": title,
+           "description": description, "position": (last or {}).get("position", -1) + 1,
            "storage_id": file_id, "original_filename": file.filename,
-           "content_type": content_type, "size": len(data),
-           "is_deleted": False, "created_at": datetime.now(timezone.utc).isoformat()}
+           "content_type": content_type, "size": size,
+           "is_deleted": False, "created_at": now, "updated_at": now}
     await db.product_assets.insert_one(doc)
     return asset_public(doc)
 
 @api_router.get("/admin/products/{package_id}/assets")
 async def list_assets_admin(package_id: str, admin: dict = Depends(require_admin)):
-    docs = await db.product_assets.find({"package_id": package_id, "is_deleted": False}).to_list(1000)
-    return [asset_public(d) for d in docs]
+    return await list_package_assets(package_id)
+
+@api_router.patch("/admin/assets/{asset_id}")
+async def update_asset(asset_id: str, input: AssetUpdateInput, admin: dict = Depends(require_admin)):
+    record = await get_asset_or_404(asset_id)
+    changes = input.model_dump(exclude_none=True)
+    if "package_id" in changes and changes["package_id"] not in CATALOG:
+        raise HTTPException(status_code=404, detail="Product not found")
+    changes["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.product_assets.update_one({"id": asset_id}, {"$set": changes})
+    return asset_public({**record, **changes})
+
+@api_router.put("/admin/assets/{asset_id}/file")
+async def replace_asset_file(asset_id: str, file: UploadFile = File(...),
+                             admin: dict = Depends(require_admin)):
+    """Swap the video/file behind an asset, keeping its title, order and buyers' access."""
+    record = await get_asset_or_404(asset_id)
+    file_id, content_type, size = await put_upload(file)
+    changes = {"storage_id": file_id, "original_filename": file.filename,
+               "content_type": content_type, "size": size,
+               "updated_at": datetime.now(timezone.utc).isoformat()}
+    await db.product_assets.update_one({"id": asset_id}, {"$set": changes})
+    await delete_object(record["storage_id"])
+    return asset_public({**record, **changes})
+
+@api_router.post("/admin/products/{package_id}/assets/reorder")
+async def reorder_assets(package_id: str, input: ReorderInput, admin: dict = Depends(require_admin)):
+    for i, aid in enumerate(input.asset_ids):
+        await db.product_assets.update_one({"id": aid, "package_id": package_id}, {"$set": {"position": i}})
+    return await list_package_assets(package_id)
 
 @api_router.delete("/admin/assets/{asset_id}")
 async def delete_asset(asset_id: str, admin: dict = Depends(require_admin)):
+    record = await get_asset_or_404(asset_id)
     await db.product_assets.update_one({"id": asset_id}, {"$set": {"is_deleted": True}})
+    await delete_object(record["storage_id"])
     return {"status": "ok"}
 
+# ---- Admin: users & access
+class UserUpdateInput(BaseModel):
+    role: Optional[str] = Field(default=None, pattern="^(user|admin)$")
+    purchases: Optional[List[str]] = None
+    name: Optional[str] = Field(default=None, min_length=1)
+
+def admin_user_view(u: dict) -> dict:
+    return {**public_user(u), "created_at": u.get("created_at")}
+
+@api_router.get("/admin/users")
+async def list_users(q: str = "", admin: dict = Depends(require_admin)):
+    query = {}
+    if q:
+        rx = {"$regex": re.escape(q), "$options": "i"}
+        query = {"$or": [{"email": rx}, {"name": rx}]}
+    docs = await db.users.find(query, {"password_hash": 0}).sort("created_at", -1).to_list(1000)
+    return [admin_user_view(u) for u in docs]
+
+async def get_user_or_404(user_id: str) -> dict:
+    u = await db.users.find_one({"_id": ObjectId(user_id)}) if ObjectId.is_valid(user_id) else None
+    if not u:
+        raise HTTPException(status_code=404, detail="User not found")
+    return u
+
+@api_router.patch("/admin/users/{user_id}")
+async def update_user(user_id: str, input: UserUpdateInput, admin: dict = Depends(require_admin)):
+    target = await get_user_or_404(user_id)
+    changes = input.model_dump(exclude_none=True)
+    if user_id == admin["id"] and changes.get("role") == "user":
+        raise HTTPException(status_code=400, detail="You can't remove your own admin access")
+    if "purchases" in changes:
+        unknown = [p for p in changes["purchases"] if p not in CATALOG]
+        if unknown:
+            raise HTTPException(status_code=400, detail=f"Unknown product: {', '.join(unknown)}")
+        changes["purchases"] = list(dict.fromkeys(changes["purchases"]))
+    if changes:
+        await db.users.update_one({"_id": target["_id"]}, {"$set": changes})
+    return admin_user_view({**target, **changes})
+
+@api_router.delete("/admin/users/{user_id}")
+async def delete_user(user_id: str, admin: dict = Depends(require_admin)):
+    target = await get_user_or_404(user_id)
+    if user_id == admin["id"]:
+        raise HTTPException(status_code=400, detail="You can't delete your own account")
+    await db.users.delete_one({"_id": target["_id"]})
+    return {"status": "ok"}
+
+# ---- Admin: payments & overview
+@api_router.get("/admin/payments")
+async def list_payments(admin: dict = Depends(require_admin)):
+    docs = await db.payment_transactions.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    oids = list({ObjectId(d["user_id"]) for d in docs if ObjectId.is_valid(d.get("user_id") or "")})
+    users = {str(u["_id"]): u for u in await db.users.find({"_id": {"$in": oids}}).to_list(None)}
+    for d in docs:
+        u = users.get(d.get("user_id"))
+        d["user_email"] = u["email"] if u else None
+        d["user_name"] = u["name"] if u else None
+        d["product_name"] = CATALOG.get(d.get("package_id"), {}).get("name", d.get("package_id"))
+    return docs
+
+@api_router.get("/admin/stats")
+async def admin_stats(admin: dict = Depends(require_admin)):
+    paid = await db.payment_transactions.find({"payment_status": "paid"}, {"amount": 1}).to_list(None)
+    per_product = {}
+    for pid in CATALOG:
+        per_product[pid] = {
+            "buyers": await db.users.count_documents({"purchases": pid}),
+            "assets": await db.product_assets.count_documents({"package_id": pid, "is_deleted": False}),
+        }
+    return {
+        "users": await db.users.count_documents({}),
+        "admins": await db.users.count_documents({"role": "admin"}),
+        "paid_orders": len(paid),
+        "revenue": sum(p.get("amount", 0) for p in paid),
+        "videos": await db.product_assets.count_documents(
+            {"is_deleted": False, "content_type": {"$regex": "^video/"}}),
+        "files": await db.product_assets.count_documents({"is_deleted": False}),
+        "per_product": per_product,
+    }
+
+# ---- Customer library, streaming & downloads
 @api_router.get("/my/library")
 async def my_library(user: dict = Depends(get_current_user)):
-    """Owned products with their downloadable assets."""
-    owned_ids = user.get("purchases", [])
+    """Owned products with their assets. Admins see every product."""
+    owned_ids = list(CATALOG) if user.get("role") == "admin" else user.get("purchases", [])
     result = []
     for pid in owned_ids:
         if pid not in CATALOG:
             continue
-        docs = await db.product_assets.find({"package_id": pid, "is_deleted": False}).to_list(1000)
-        result.append({"product": CATALOG[pid], "assets": [asset_public(d) for d in docs]})
+        result.append({"product": CATALOG[pid], "assets": await list_package_assets(pid)})
     return result
 
-@api_router.get("/assets/{asset_id}/download")
-async def download_asset(asset_id: str, user: dict = Depends(get_current_user)):
-    record = await db.product_assets.find_one({"id": asset_id, "is_deleted": False})
-    if not record:
-        raise HTTPException(status_code=404, detail="Asset not found")
+async def authorized_asset(asset_id: str, user: dict) -> dict:
+    record = await get_asset_or_404(asset_id)
     owns = record["package_id"] in user.get("purchases", [])
     if not owns and user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="You don't own this product")
-    data, content_type = await get_object(record["storage_id"])
-    return Response(content=data, media_type=record.get("content_type", content_type),
-                    headers={"Content-Disposition": f'attachment; filename="{record["original_filename"]}"'})
+    return record
+
+def parse_range(header: Optional[str], size: int):
+    """Parse a single 'bytes=start-end' range. Returns (start, end), or None for a full response."""
+    if not header or not header.startswith("bytes=") or size == 0:
+        return None
+    first, _, last = header[6:].split(",")[0].strip().partition("-")
+    try:
+        if first:
+            start, end = int(first), int(last) if last else size - 1
+        else:
+            start, end = max(size - int(last), 0), size - 1
+    except ValueError:
+        return None
+    end = min(end, size - 1)
+    if start > end:
+        raise HTTPException(status_code=416, detail="Range not satisfiable",
+                            headers={"Content-Range": f"bytes */{size}"})
+    return start, end
+
+async def stream_record(record: dict, request: Request, disposition: str):
+    grid_out = await open_object(record["storage_id"])
+    size = grid_out.length
+    rng = parse_range(request.headers.get("range"), size)
+    start, end = rng if rng else (0, size - 1)
+    if start:
+        grid_out.seek(start)
+
+    async def body():
+        remaining = end - start + 1
+        while remaining > 0:
+            chunk = await grid_out.read(min(STREAM_CHUNK, remaining))
+            if not chunk:
+                break
+            remaining -= len(chunk)
+            yield chunk
+
+    filename = record["original_filename"].replace('"', "")
+    headers = {"Accept-Ranges": "bytes", "Content-Length": str(max(end - start + 1, 0)),
+               "Content-Disposition": f'{disposition}; filename="{filename}"',
+               "Cache-Control": "private, no-store"}
+    if rng:
+        headers["Content-Range"] = f"bytes {start}-{end}/{size}"
+    return StreamingResponse(body(), status_code=206 if rng else 200,
+                             media_type=record.get("content_type"), headers=headers)
+
+@api_router.get("/assets/{asset_id}/stream")
+async def stream_asset(asset_id: str, request: Request, user: dict = Depends(get_current_user)):
+    """Range-enabled playback for the in-browser video player."""
+    return await stream_record(await authorized_asset(asset_id, user), request, "inline")
+
+@api_router.get("/assets/{asset_id}/download")
+async def download_asset(asset_id: str, request: Request, user: dict = Depends(get_current_user)):
+    return await stream_record(await authorized_asset(asset_id, user), request, "attachment")
 
 # ------------------------------------------------------------------ Payments
 @api_router.post("/payments/checkout")

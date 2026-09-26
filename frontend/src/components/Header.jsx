@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { LogOut, LayoutDashboard } from "lucide-react";
+import { LogOut, LayoutDashboard, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useModal } from "@/context/ModalContext";
 import { LogoMark, LogoWordmark } from "@/components/Logo";
@@ -68,6 +68,15 @@ export default function Header() {
         <div className="flex items-center gap-3">
           {user && user !== false ? (
             <>
+              {user.role === "admin" && (
+                <Link
+                  to="/admin"
+                  className="flex items-center gap-2 text-sm text-[#E2FF4A] hover:text-white transition-colors font-mono uppercase tracking-wider"
+                  data-testid="header-admin-link"
+                >
+                  <ShieldCheck size={16} /> <span className="hidden sm:inline">Admin</span>
+                </Link>
+              )}
               <Link
                 to="/dashboard"
                 className="hidden sm:flex items-center gap-2 text-sm text-zinc-300 hover:text-white transition-colors"
