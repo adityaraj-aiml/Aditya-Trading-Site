@@ -7,6 +7,9 @@ export const api = axios.create({
   withCredentials: true,
 });
 
+// No backend configured (e.g. the static GitHub Pages build): the admin panel runs in browser-only preview mode.
+export const IS_PREVIEW = !BACKEND_URL;
+
 // Direct URL for <video src>; auth rides on the access_token cookie.
 export const streamUrl = (assetId) => `${BACKEND_URL}/api/assets/${assetId}/stream`;
 

@@ -3,10 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   LayoutGrid, Film, Users, Receipt, Upload, Trash2, Pencil, Play, FileText, ArrowUp, ArrowDown,
-  RefreshCw, Check, X, Search, ShieldCheck, Shield, Download,
+  RefreshCw, Check, X, Search, ShieldCheck, Shield, Download, Info, RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
-import { api, INR, fileSize, formatApiErrorDetail } from "@/lib/api";
+import { api as serverApi, INR, fileSize, formatApiErrorDetail, IS_PREVIEW } from "@/lib/api";
+import { demoApi, demoVideoSrc, resetDemo, DEMO_ADMIN } from "@/lib/demoApi";
 import { useAuth } from "@/context/AuthContext";
 import { useModal } from "@/context/ModalContext";
 import VideoModal from "@/components/VideoModal";
@@ -18,11 +19,16 @@ const TABS = [
   { id: "payments", label: "Payments", icon: Receipt },
 ];
 
+// Without a backend, every admin call goes to the in-browser store instead.
+const api = IS_PREVIEW ? demoApi : serverApi;
+const videoSrc = IS_PREVIEW ? demoVideoSrc : undefined;
+
 const errMsg = (e, fallback) => formatApiErrorDetail(e?.response?.data?.detail) || fallback;
 const fmtDate = (iso) => (iso ? new Date(iso).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "—");
 
 export default function Admin() {
-  const { user } = useAuth();
+  const auth = useAuth();
+  const user = IS_PREVIEW ? DEMO_ADMIN : auth.user;
   const { openAuth } = useModal();
   const navigate = useNavigate();
   const [tab, setTab] = useState("overview");
@@ -33,7 +39,7 @@ export default function Admin() {
   }, []);
 
   useEffect(() => {
-    if (user === false) {
+    if (!IS_PREVIEW && user === false) {
       openAuth("login", () => navigate("/admin"));
       navigate("/");
     }
@@ -62,6 +68,8 @@ export default function Admin() {
           <h1 className="font-display font-black text-5xl md:text-7xl tracking-tighter mb-10">Control room.</h1>
         </motion.div>
 
+        {IS_PREVIEW && <PreviewBanner />}
+
         <div className="flex gap-2 overflow-x-auto border-b border-white/10 mb-10 -mx-1 px-1">
           {TABS.map((t) => (
             <button key={t.id} onClick={() => setTab(t.id)}
@@ -80,6 +88,27 @@ export default function Admin() {
         {tab === "payments" && <Payments />}
       </div>
     </main>
+  );
+}
+
+function PreviewBanner() {
+  const reset = async () => {
+    if (!window.confirm("Clear all preview data (uploaded videos, edits, sample users) from this browser?")) return;
+    await resetDemo();
+    window.location.reload();
+  };
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center gap-4 border border-[#E2FF4A]/30 bg-[#E2FF4A]/5 rounded-xl p-5 mb-10" data-testid="admin-preview-banner">
+      <Info size={20} className="text-[#E2FF4A] shrink-0" />
+      <p className="text-sm text-zinc-300 flex-1">
+        <span className="text-white font-medium">Preview mode.</span> The site's server isn't connected yet, so everything
+        here (uploads, edits, access changes) is saved only in this browser. Buyers won't see it until the server
+        is connected; then this panel switches to live mode automatically.
+      </p>
+      <button onClick={reset} className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-zinc-400 hover:text-white border border-white/15 hover:border-white/40 rounded-full px-4 py-2 transition-colors shrink-0">
+        <RotateCcw size={13} /> Reset preview
+      </button>
+    </div>
   );
 }
 
@@ -202,7 +231,7 @@ function ProductContent({ product, products }) {
           <p className="text-zinc-500 font-mono text-sm">Loading…</p>
         ) : assets.length === 0 ? (
           <div className="border border-dashed border-white/15 rounded-xl p-10 text-center text-zinc-500 text-sm">
-            No videos or files yet. Upload the first one on the left.
+            No videos or files yet. Use the upload form to add the first one.
           </div>
         ) : (
           <div className="space-y-3">
@@ -213,7 +242,7 @@ function ProductContent({ product, products }) {
           </div>
         )}
       </div>
-      <VideoModal asset={playing} onClose={() => setPlaying(null)} />
+      <VideoModal asset={playing} onClose={() => setPlaying(null)} resolveSrc={videoSrc} />
     </div>
   );
 }
@@ -226,8 +255,10 @@ function UploadForm({ product, onDone }) {
   const [drag, setDrag] = useState(false);
   const inputRef = useRef(null);
 
+  const busy = progress !== null;
+
   const pick = (f) => {
-    if (!f) return;
+    if (!f || busy) return;
     setFile(f);
     if (!title) setTitle(f.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " "));
   };
@@ -253,7 +284,6 @@ function UploadForm({ product, onDone }) {
     }
   };
 
-  const busy = progress !== null;
   return (
     <form onSubmit={submit} className="border border-white/10 rounded-xl p-6 bg-[#0A0A0A] space-y-4 lg:sticky lg:top-28" data-testid="admin-upload-form">
       <h3 className="font-display font-bold text-lg flex items-center gap-2"><Upload size={17} className="text-[#E2FF4A]" /> Upload new</h3>
@@ -261,10 +291,10 @@ function UploadForm({ product, onDone }) {
         onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
         onDragLeave={() => setDrag(false)}
         onDrop={(e) => { e.preventDefault(); setDrag(false); pick(e.dataTransfer.files[0]); }}
-        className={`block border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
-          drag ? "border-[#E2FF4A] bg-[#E2FF4A]/5" : "border-white/15 hover:border-white/30"
-        }`}>
-        <input ref={inputRef} type="file" className="hidden" accept="video/*,.pdf,.zip,.png,.jpg,.jpeg,.txt,.csv"
+        className={`block border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+          busy ? "opacity-50 pointer-events-none" : "cursor-pointer"
+        } ${drag ? "border-[#E2FF4A] bg-[#E2FF4A]/5" : "border-white/15 hover:border-white/30"}`}>
+        <input ref={inputRef} type="file" className="hidden" disabled={busy} accept="video/*,.pdf,.zip,.png,.jpg,.jpeg,.txt,.csv"
           onChange={(e) => pick(e.target.files[0])} data-testid="admin-file-input" />
         {file ? (
           <>

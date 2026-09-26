@@ -1,15 +1,32 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { streamUrl } from "@/lib/api";
 
-export default function VideoModal({ asset, onClose }) {
+// resolveSrc: optional async (assetId) => url, for sources that aren't the backend stream (preview mode).
+export default function VideoModal({ asset, onClose, resolveSrc }) {
+  const [src, setSrc] = useState(null);
+
   useEffect(() => {
     if (!asset) return;
     const onKey = (e) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [asset, onClose]);
+
+  useEffect(() => {
+    if (!asset) return setSrc(null);
+    if (!resolveSrc) return setSrc(streamUrl(asset.id));
+    let url, cancelled = false;
+    resolveSrc(asset.id).then((u) => {
+      url = u;
+      if (!cancelled) setSrc(u);
+    }).catch(() => {});
+    return () => {
+      cancelled = true;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [asset, resolveSrc]);
 
   return (
     <AnimatePresence>
@@ -31,15 +48,19 @@ export default function VideoModal({ asset, onClose }) {
                 <X size={18} />
               </button>
             </div>
-            <video
-              key={asset.id}
-              src={streamUrl(asset.id)}
-              controls
-              autoPlay
-              controlsList="nodownload"
-              onContextMenu={(e) => e.preventDefault()}
-              className="w-full max-h-[75vh] bg-black"
-            />
+            {src ? (
+              <video
+                key={src}
+                src={src}
+                controls
+                autoPlay
+                controlsList="nodownload"
+                onContextMenu={(e) => e.preventDefault()}
+                className="w-full max-h-[75vh] bg-black"
+              />
+            ) : (
+              <div className="aspect-video grid place-items-center text-zinc-500 font-mono text-sm bg-black">Loading…</div>
+            )}
             {asset.description && <p className="px-5 py-4 text-sm text-zinc-400 whitespace-pre-line">{asset.description}</p>}
           </motion.div>
         </motion.div>
