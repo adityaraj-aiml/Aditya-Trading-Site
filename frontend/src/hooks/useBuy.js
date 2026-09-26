@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { api } from "@/lib/api";
+import { api, formatApiErrorDetail } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useModal } from "@/context/ModalContext";
 
@@ -23,7 +23,7 @@ export function useBuy() {
       const { data } = await api.post("/payments/checkout", { package_id: packageId });
       order = data;
     } catch (err) {
-      toast.error("Could not start checkout. Please try again.");
+      toast.error(err?.response ? formatApiErrorDetail(err.response.data?.detail) : "Could not start checkout. Please try again.");
       setLoadingId(null);
       return;
     }

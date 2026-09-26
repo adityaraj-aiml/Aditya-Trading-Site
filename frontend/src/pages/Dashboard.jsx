@@ -3,7 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { TrendingUp, GraduationCap, Lock, ArrowUpRight, Download, Play, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
-import { api, INR } from "@/lib/api";
+import { api, INR, IS_PREVIEW } from "@/lib/api";
+import { demoVideoSrc } from "@/lib/demoApi";
 import { useAuth } from "@/context/AuthContext";
 import { useModal } from "@/context/ModalContext";
 import VideoModal from "@/components/VideoModal";
@@ -142,7 +143,7 @@ export default function Dashboard() {
           </Link>
         )}
       </div>
-      <VideoModal asset={playing} onClose={() => setPlaying(null)} />
+      <VideoModal asset={playing} onClose={() => setPlaying(null)} resolveSrc={IS_PREVIEW ? demoVideoSrc : undefined} />
     </main>
   );
 }

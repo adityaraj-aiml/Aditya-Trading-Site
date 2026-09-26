@@ -1,14 +1,16 @@
 import axios from "axios";
+import { demoApi } from "@/lib/demoApi";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
-export const api = axios.create({
+// No backend configured (e.g. the static GitHub Pages build): the admin panel runs in browser-only preview mode.
+export const IS_PREVIEW = !BACKEND_URL;
+
+// In preview mode the whole site (login, library, admin) talks to the in-browser store instead.
+export const api = IS_PREVIEW ? demoApi : axios.create({
   baseURL: `${BACKEND_URL}/api`,
   withCredentials: true,
 });
-
-// No backend configured (e.g. the static GitHub Pages build): the admin panel runs in browser-only preview mode.
-export const IS_PREVIEW = !BACKEND_URL;
 
 // Direct URL for <video src>; auth rides on the access_token cookie.
 export const streamUrl = (assetId) => `${BACKEND_URL}/api/assets/${assetId}/stream`;

@@ -14,6 +14,11 @@ const PRODUCT_IDS = CATALOG.map((p) => p.id);
 
 export const DEMO_ADMIN = { id: "demo-admin", name: "Raj", email: "admin (preview)", role: "admin", purchases: [] };
 
+// Ready-made customer for trying the buyer side of the site in preview mode.
+export const DEMO_STUDENT = { email: "student@techin.demo", password: "Student@123" };
+const DEMO_STUDENT_USER = { id: "demo-student", name: "Demo Student", email: DEMO_STUDENT.email, role: "user",
+  purchases: ["course_beginner", "course_pro"] };
+
 /* ---------------------------------------------------------------- IndexedDB key/value store */
 let dbPromise;
 function openDb() {
@@ -59,7 +64,29 @@ const seedPayments = (users) => [
 ];
 
 const getAssets = () => load("assets", []);
-const getUsers = () => load("users", seedUsers());
+
+async function sha256(text) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function getUsers() {
+  const users = await load("users", seedUsers());
+  if (!users.some((u) => u.id === DEMO_STUDENT_USER.id)) {
+    users.push({ ...DEMO_STUDENT_USER, password_hash: await sha256(DEMO_STUDENT.password), created_at: now() });
+    await kvSet("users", users);
+  }
+  return users;
+}
+
+// Never expose password hashes to the UI.
+const userView = ({ password_hash, ...u }) => u;
+
+async function sessionUser() {
+  const id = await kvGet("session");
+  const u = id && (await getUsers()).find((x) => x.id === id);
+  return u || fail(401, "Not authenticated");
+}
 async function getPayments() {
   return load("payments", seedPayments(await getUsers()));
 }
@@ -102,6 +129,41 @@ const guessType = (file) => {
 /* ---------------------------------------------------------------- routes */
 const routes = [
   ["get", /^\/products$/, async () => CATALOG],
+
+  ["get", /^\/auth\/me$/, async () => userView(await sessionUser())],
+
+  ["post", /^\/auth\/login$/, async (_, { email, password }) => {
+    const u = (await getUsers()).find((x) => x.email === (email || "").trim().toLowerCase());
+    if (!u || !u.password_hash || u.password_hash !== (await sha256(password || ""))) fail(401, "Invalid email or password");
+    await kvSet("session", u.id);
+    return userView(u);
+  }],
+
+  ["post", /^\/auth\/register$/, async (_, { name, email, password }) => {
+    email = (email || "").trim().toLowerCase();
+    if (!name || !email.includes("@")) fail(422, "Enter your name and a valid email");
+    if ((password || "").length < 6) fail(422, "Password must be at least 6 characters");
+    const users = await getUsers();
+    if (users.some((x) => x.email === email)) fail(400, "Email already registered");
+    const u = { id: uid(), name, email, role: "user", purchases: [], password_hash: await sha256(password), created_at: now() };
+    await kvSet("users", [...users, u]);
+    await kvSet("session", u.id);
+    return userView(u);
+  }],
+
+  ["post", /^\/auth\/logout$/, async () => {
+    await kvDel("session");
+    return { status: "ok" };
+  }],
+
+  ["get", /^\/my\/library$/, async () => {
+    const u = await sessionUser();
+    const owned = u.role === "admin" ? PRODUCT_IDS : u.purchases;
+    return Promise.all(CATALOG.filter((p) => owned.includes(p.id)).map(async (p) => ({ product: p, assets: await listFor(p.id) })));
+  }],
+
+  ["post", /^\/payments\/checkout$/, async () =>
+    fail(503, "Payments aren't available yet: the site's server isn't connected (preview mode).")],
 
   ["get", /^\/admin\/stats$/, async () => {
     const [assets, users, payments] = await Promise.all([getAssets(), getUsers(), getPayments()]);
@@ -182,7 +244,7 @@ const routes = [
 
   ["get", /^\/admin\/users$/, async (_, __, opts) => {
     const q = (opts.params?.q || "").toLowerCase();
-    return (await getUsers()).filter((u) => !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+    return (await getUsers()).filter((u) => !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)).map(userView);
   }],
 
   ["patch", /^\/admin\/users\/([^/]+)$/, async ([id], changes) => {
@@ -196,7 +258,7 @@ const routes = [
     }
     Object.assign(u, changes);
     await kvSet("users", users);
-    return u;
+    return userView(u);
   }],
 
   ["delete", /^\/admin\/users\/([^/]+)$/, async ([id]) => {

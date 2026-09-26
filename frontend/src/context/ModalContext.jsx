@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useCallback, useContext, useState } from "react";
 
 const ModalContext = createContext(null);
 
@@ -7,11 +7,12 @@ export const ModalProvider = ({ children }) => {
   const [authMode, setAuthMode] = useState("login");
   const [afterAuth, setAfterAuth] = useState(null); // callback after successful auth
 
-  const openAuth = (mode = "login", cb = null) => {
+  // Stable identity: pages list openAuth in effect deps, so a new function per render would re-fire them forever.
+  const openAuth = useCallback((mode = "login", cb = null) => {
     setAuthMode(mode);
     setAfterAuth(() => cb);
     setAuthOpen(true);
-  };
+  }, []);
 
   return (
     <ModalContext.Provider
